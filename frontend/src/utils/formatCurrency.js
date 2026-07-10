@@ -38,13 +38,3 @@ export function formatCurrency(amount, currency) {
     maximumFractionDigits: decimals,
   })}`;
 }
-
-export function formatAmount(amount, currency) {
-  const decimals = DECIMALS[currency] ?? 2;
-  if (currency === 'BTC') return amount.toFixed(decimals);
-  if (currency === 'INR') return Math.round(amount).toLocaleString('en-IN');
-  return amount.toLocaleString('en-US', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-}

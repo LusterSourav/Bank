@@ -10,7 +10,6 @@ export default {
     appSecret: process.env.PRIVY_APP_SECRET,
   },
   mongoUri: process.env.MONGO_URI,
-  alchemyKey: process.env.ALCHEMY_API_KEY,
   stripeKey: process.env.STRIPE_SECRET_KEY,
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   razorpay: {

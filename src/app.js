@@ -64,6 +64,6 @@ app.post('/api/razorpay-webhook', express.raw({ type: 'application/json' }), asy
 
 app.use(express.json());
 app.use('/api', routes);
-app.get('/health', (_, res) => res.json({ ok: true }));
+app.get('/api/health', (_, res) => res.json({ ok: true }));
 
 export default app;

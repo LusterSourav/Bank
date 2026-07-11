@@ -15,16 +15,18 @@ export async function scoreIp(ip) {
     });
     const data = await resp.json();
     const r = data.risk || {};
-    const ipd = r.ip_details || {};
+    const ip = data.ip || {};
+    const p = ip.privacy || {};
+    const a = ip.asn || {};
     return {
       score: r.score ?? 0,
-      proxy: ipd.is_proxy ?? false,
-      vpn: ipd.is_vpn ?? false,
-      tor: ipd.is_tor ?? false,
-      country: ipd.country ?? '',
-      city: ipd.city ?? '',
-      asn: ipd.asn ?? '',
-      mobile: ipd.is_mobile ?? false,
+      proxy: p.Proxy ?? false,
+      vpn: p.VPN ?? false,
+      tor: p.Tor ?? false,
+      country: ip.country ?? '',
+      city: ip.city ?? '',
+      asn: a.ASN ?? '',
+      mobile: false,
       risk: r.level ?? 'unknown',
     };
   } catch {

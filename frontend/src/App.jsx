@@ -1,12 +1,7 @@
-// Single-file SPA with state-based screen switching (no router).
-// Screens: Login, Dashboard, Deposit, Send, History, Settings, + modals.
-// All icons from @bitcoin-design/bitcoin-icons-react/outline only.
-// Auth via Privy (email + Google), payments via Stripe + Razorpay UPI.
-// ponytail: one file, no router, no state management library. Split into
-//           separate screen components only if the file exceeds ~1500 lines
-//           or routing needs change.
-import { usePrivy, useLogin, useLogout, useToken } from '@privy-io/react-auth';
+import { onAuthStateChanged, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from './i18n.js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { formatCurrency } from './utils/formatCurrency';
@@ -27,25 +22,25 @@ import {
   LinkIcon,
   ClockIcon,
   GearIcon,
-  TrashIcon,
   BellIcon,
   InfoIcon,
   QuestionCircleIcon,
   ExitIcon,
   SearchIcon,
+  ContactsIcon,
+  KeyIcon,
+  FileIcon,
+  HomeIcon,
+  EditIcon,
+  AlertCircleIcon,
+  QrCodeIcon,
+  SafeIcon,
+  PasswordIcon,
 } from '@bitcoin-design/bitcoin-icons-react/outline';
+import { auth, googleProvider } from './firebase';
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 
-// ponytail: inline SVG icons for ones missing from Bitcoin Design set
-const EyeIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
-const EyeOffIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>;
-const CameraIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>;
-const DownloadIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
-const WifiOffIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>;
-const XCircleIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>;
-const UserPlusIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>;
-const GoogleIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>;
-
-// ponytail: single file, no router, state-based screen switching
 const API = import.meta.env.VITE_API_URL;
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
@@ -63,30 +58,207 @@ async function apiFetch(path, token, opts = {}) {
   return data;
 }
 
-function LoginScreen({ error }) {
-  const { login } = useLogin();
+const EyeIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
+const ChevronDownIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>;
+const SunIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>;
+const MoonIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
+const DownloadIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+const FingerprintIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 4.5 8.3"/><path d="M17.5 6.34A10 10 0 0 1 22 12"/><path d="M2 12c0 4.2 2.6 7.8 6.3 9.3"/><path d="M9.2 8.5A5 5 0 0 1 17 12"/><path d="M17 17.5A5 5 0 0 1 7 12"/><path d="M12 5v.01"/><path d="M12 9v.01"/><path d="M12 13v.01"/><path d="M12 17v.01"/></svg>;
+const XCircleIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>;
+const MailIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>;
+const UserPlusIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>;
+const GoogleIcon = ({ size = 18 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>;
+
+function LoginScreen({ onGoogleLogin, onEmailLogin, isSignUp, setIsSignUp, error, onForgotPassword }) {
+  const { t } = useTranslation();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   return (
     <div className="login-screen page-enter">
       <div className="login-card">
         <div className="logo"><BitcoinIcon size={56} /></div>
-        <h1>Bank</h1>
-        <p className="subtitle">Send money globally. Near-zero fees.</p>
+        <h1>{t('appName')}</h1>
+        <p className="subtitle">{t('appSubtitle')}</p>
         {error && <p className="error-text login-error"><InfoIcon size={14} /> {error}</p>}
-        <button className="btn-primary" onClick={() => login({ loginMethods: ['email', 'google'] })}>
-          <GoogleIcon size={18} /> Get Started
+        <div className="form-group">
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('email')} />
+        </div>
+        <div className="form-group">
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('password')} />
+        </div>
+        <button className="btn-primary" onClick={() => onEmailLogin(email, password)}>
+          {isSignUp ? t('createAccount') : t('signIn')}
         </button>
+        <button className="btn-secondary" onClick={onGoogleLogin}>
+          <GoogleIcon size={18} /> {t('continueWithGoogle')}
+        </button>
+        {!isSignUp && (
+          <p className="forgot-link">
+            <button className="btn-link" onClick={onForgotPassword}>{t('forgotPassword')}</button>
+          </p>
+        )}
         <p className="terms">
-          <ShieldIcon size={12} /> Secured by Bitcoin Design standards
+          {isSignUp ? t('alreadyAccount') : t('noAccount')}{' '}
+          <button className="btn-link" onClick={() => setIsSignUp(!isSignUp)}>
+            {isSignUp ? t('signIn') : t('signUp')}
+          </button>
         </p>
       </div>
     </div>
   );
 }
 
-function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings }) {
-  const { logout } = useLogout();
+function ForgotPasswordScreen({ onBack }) {
+  const { t } = useTranslation();
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSend = async () => {
+    if (!email) return;
+    setLoading(true);
+    setError('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSent(true);
+    } catch (err) {
+      // ponytail: always show success — anti-enumeration
+      setSent(true);
+    }
+    setLoading(false);
+  };
+
+  if (sent) {
+    return (
+      <div className="login-screen page-enter">
+        <div className="login-card">
+          <div className="logo"><BitcoinIcon size={56} /></div>
+          <h2>{t('forgotPasswordTitle')}</h2>
+          <p className="subtitle">{t('resetLinkSent')}</p>
+          <button className="btn-primary" onClick={onBack}>{t('backToLogin')}</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="login-screen page-enter">
+      <div className="login-card">
+        <div className="logo"><BitcoinIcon size={56} /></div>
+        <h2>{t('forgotPasswordTitle')}</h2>
+        <p className="subtitle">{t('forgotPasswordSubtitle')}</p>
+        {error && <p className="error-text"><InfoIcon size={14} /> {error}</p>}
+        <div className="form-group">
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('email')} />
+        </div>
+        <button className="btn-primary" onClick={handleSend} disabled={loading}>
+          {loading ? t('sending') : t('sendResetLink')}
+        </button>
+        <p className="terms">
+          <button className="btn-link" onClick={onBack}>{t('backToLogin')}</button>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ResetPasswordScreen({ oobCode, onBack }) {
+  const { t } = useTranslation();
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+  const [email, setEmail] = useState('');
+
+  useEffect(() => {
+    if (!oobCode) return;
+    verifyPasswordResetCode(auth, oobCode).then(e => setEmail(e)).catch(() => setError('Invalid or expired reset link'));
+  }, [oobCode]);
+
+  const check = {
+    length: password.length >= 8,
+    upper: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+    match: password === confirm && password.length > 0,
+  };
+
+  const handleReset = async () => {
+    if (!Object.values(check).every(Boolean)) return;
+    setLoading(true);
+    setError('');
+    try {
+      await confirmPasswordReset(auth, oobCode, password);
+      setDone(true);
+    } catch (err) {
+      setError(err.message);
+    }
+    setLoading(false);
+  };
+
+  if (done) {
+    return (
+      <div className="login-screen page-enter">
+        <div className="login-card">
+          <div className="logo"><BitcoinIcon size={56} /></div>
+          <h2>{t('passwordResetSuccess')}</h2>
+          <p className="subtitle">{t('passwordResetLogin')}</p>
+          <button className="btn-primary" onClick={onBack}>{t('backToLogin')}</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="login-screen page-enter">
+      <div className="login-card">
+        <div className="logo"><BitcoinIcon size={56} /></div>
+        <h2>{t('resetPasswordTitle')}</h2>
+        <p className="subtitle">{email || t('forgotPasswordSubtitle')}</p>
+        {error && <p className="error-text"><InfoIcon size={14} /> {error}</p>}
+        <div className="form-group">
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('newPassword')} />
+        </div>
+        <div className="form-group">
+          <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={t('confirmPassword')} />
+        </div>
+        <div className="password-checklist">
+          <span className={check.length ? 'pass' : ''}>{check.length ? '✓' : '○'} {t('passwordMinLength')}</span>
+          <span className={check.upper ? 'pass' : ''}>{check.upper ? '✓' : '○'} {t('passwordUppercase')}</span>
+          <span className={check.number ? 'pass' : ''}>{check.number ? '✓' : '○'} {t('passwordNumber')}</span>
+          <span className={check.match ? 'pass' : ''}>{check.match ? '✓' : '○'} {t('passwordsMatch')}</span>
+        </div>
+        <button className="btn-primary" onClick={handleReset} disabled={loading || !Object.values(check).every(Boolean)}>
+          {loading ? t('loading') : t('resetPassword')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings, onKyc, onLogout }) {
+  const { t } = useTranslation();
   const [recentTxs, setRecentTxs] = useState([]);
   const [showLogout, setShowLogout] = useState(false);
+  const [privacyRevealed, setPrivacyRevealed] = useState(false);
+  const privacyTimerRef = useRef(null);
+  const [totpSession, setTotpSession] = useState(null);
+  const [totpUnlockCode, setTotpUnlockCode] = useState('');
+  const [totpUnlockErr, setTotpUnlockErr] = useState('');
+  const [autoLocked, setAutoLocked] = useState(false);
+
+  const darkMode = localStorage.getItem('darkMode') !== 'false';
+  const showBalance = localStorage.getItem('showBalance') !== 'false';
+  const privacyPin = localStorage.getItem('privacyPin') === 'true';
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  }, []);
 
   useEffect(() => {
     if (token) {
@@ -96,78 +268,174 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
     }
   }, [token]);
 
-  const dailyLimit = 100000;
-  const spent = recentTxs.filter(t => t.type === 'send').reduce((sum, t) => sum + t.amount, 0);
-  const remaining = Math.max(0, dailyLimit - spent);
-  const limitPercent = Math.min(100, (spent / dailyLimit) * 100);
+  // ponytail: auto-lock on visibility change
+  useEffect(() => {
+    const handleVisibility = () => {
+      const timer = localStorage.getItem('autoLockTimer');
+      if (document.visibilityState === 'visible' && timer && timer !== 'off' && user.totpEnabled) {
+        setAutoLocked(true);
+        setTotpSession(null);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [user.totpEnabled]);
+
+  const verifyTotpUnlock = async () => {
+    try {
+      await apiFetch('/totp/verify', token, { method: 'POST', body: JSON.stringify({ token: totpUnlockCode }) });
+      setTotpSession({ verified: true });
+      setAutoLocked(false);
+      setTotpUnlockCode('');
+      setTotpUnlockErr('');
+    } catch (e) {
+      setTotpUnlockErr(e.message);
+    }
+  };
+
+  const revealBalance = () => {
+    if (user.totpEnabled && !totpSession) return;
+    if (!privacyPin) return;
+    setPrivacyRevealed(true);
+    if (privacyTimerRef.current) clearTimeout(privacyTimerRef.current);
+    privacyTimerRef.current = setTimeout(() => setPrivacyRevealed(false), 3000);
+  };
+
+  const balanceVisible = showBalance && (!privacyPin || privacyRevealed) && (!user.totpEnabled || totpSession);
+
+  const totalSent = recentTxs.filter(t => t.type === 'send').reduce((sum, t) => sum + t.amount, 0);
+  const totalReceived = recentTxs.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0);
+  const dailyLimit = user.sendLimit || 100000;
+  const remaining = Math.max(0, dailyLimit - totalSent);
+  const limitPercent = Math.min(100, (totalSent / dailyLimit) * 100);
+  const securityScore = [user.kyc === 'verified', user.totpEnabled, (user.webauthnCount || 0) > 0, user.emailVerified].filter(Boolean).length;
+
+  const fmtIST = (d) => d ? new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
 
   return (
     <div className="dashboard page-enter">
       <header className="dash-header">
         <div className="logo-small"><BitcoinIcon size={24} /></div>
         <div className="user-info">
-          <span>{user.email || 'User'}</span>
+          <span>{user.name || user.email || 'User'}</span>
           <button className="btn-ghost" onClick={onSettings}><GearIcon size={16} /></button>
-          <button className="btn-ghost" onClick={() => setShowLogout(true)}>Logout</button>
+          <button className="btn-ghost" onClick={() => setShowLogout(true)}>{t('logout')}</button>
         </div>
       </header>
 
-      <div className="security-bar">
-        <span className={`security-badge ${user.kyc === 'verified' ? 'verified' : ''}`}>
-          <ShieldIcon size={12} /> {user.kyc === 'verified' ? 'KYC Verified' : 'KYC Pending'}
-        </span>
-        <span className="security-badge">
-          <LockIcon size={12} /> Encrypted
+      {/* Profile Card */}
+      <div className="profile-card">
+        <div className="profile-avatar">
+          <BitcoinIcon size={32} />
+        </div>
+        <div className="profile-info">
+          <span className="profile-name">{user.name || user.email}</span>
+          <span className="profile-email">{user.email}</span>
+          <span className="profile-id">{t('id')}: {user.userId?.slice(0, 12)}...</span>
+        </div>
+        <span className={`kyc-badge ${user.kyc === 'verified' ? 'verified' : user.kyc === 'pending' ? 'pending' : 'unverified'}`}>
+          <ShieldIcon size={12} />
+          {user.kyc === 'verified' ? t('kycVerified') : user.kyc === 'pending' ? t('kycPending') : t('kycPending')}
         </span>
       </div>
 
+      {/* Security bar */}
+      <div className="security-bar">
+        <span className={`security-badge ${securityScore === 4 ? 'verified' : ''}`}>
+          <ShieldIcon size={12} /> {t('securityScore')}<span className="security-score-text">{securityScore}/4</span>
+        </span>
+        <span className="security-badge">
+          <LockIcon size={12} /> {t('encrypted')}
+        </span>
+      </div>
+
+      {/* Balance card */}
       <div className="balance-card">
-        <p className="balance-label">Your Balance</p>
-        <h2 className="balance-amount">{formatCurrency(user.balance || 0, 'INR')}</h2>
-        <div className="balance-actions">
-          <button className="btn-primary" onClick={onDeposit}>
-            <ReceiveIcon size={18} /> Deposit
-          </button>
-          <button className="btn-secondary" onClick={onSend}>
-            <SendIcon size={18} /> Send
-          </button>
+        <p className="balance-label">{t('yourBalance')}</p>
+        {(user.totpEnabled && (!totpSession || autoLocked)) ? (
+          <div className="totp-unlock">
+            {autoLocked && <p className="totp-unlock-desc" style={{ color: 'var(--warning)' }}><LockIcon size={14} /> {t('screenLocked')} — {t('screenLockedDesc')}</p>}
+            {!autoLocked && <p className="totp-unlock-desc">{t('totpUnlockDesc')}</p>}
+            <input className="settings-input otp-input" type="text" maxLength={6} value={totpUnlockCode} onChange={e => setTotpUnlockCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" />
+            {totpUnlockErr && <p className="error-text">{totpUnlockErr}</p>}
+            <button className="btn-primary" onClick={verifyTotpUnlock} disabled={totpUnlockCode.length !== 6}>
+              {t('unlockBalance')}
+            </button>
+          </div>
+        ) : (
+          <>
+            <h2 className={privacyPin && !privacyRevealed ? 'balance-reveal-hint' : 'balance-amount'} onClick={revealBalance}>
+              {balanceVisible ? formatCurrency(user.balance || 0, 'INR') : privacyPin && !privacyRevealed ? t('tapToReveal') : '— — —'}
+            </h2>
+            <div className="balance-actions">
+              <button className="btn-primary" onClick={onDeposit}>
+                <ReceiveIcon size={18} /> {t('deposit')}
+              </button>
+              <button className="btn-secondary" onClick={onSend}>
+                <SendIcon size={18} /> {t('send')}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Account Stats */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <span className="stat-label">{t('totalSent')}</span>
+          <span className="stat-value">{formatCurrency(totalSent, 'INR')}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">{t('totalReceived')}</span>
+          <span className="stat-value">{formatCurrency(totalReceived, 'INR')}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">{t('dailyLimit')}</span>
+          <span className="stat-value">{formatCurrency(remaining, 'INR')}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">{t('memberSince')}</span>
+          <span className="stat-value">{fmtIST(user.createdAt)}</span>
         </div>
       </div>
 
+      {/* Feature grid */}
       <div className="feature-grid">
         <button className="feature-cell" onClick={onSend}>
           <div className="feature-icon-wrap send"><SendIcon size={20} /></div>
-          <span className="feature-label">Send</span>
+          <span className="feature-label">{t('send')}</span>
         </button>
         <button className="feature-cell" onClick={onDeposit}>
           <div className="feature-icon-wrap deposit"><ReceiveIcon size={20} /></div>
-          <span className="feature-label">Deposit</span>
+          <span className="feature-label">{t('deposit')}</span>
         </button>
         <button className="feature-cell" onClick={onHistory}>
           <div className="feature-icon-wrap history"><ClockIcon size={20} /></div>
-          <span className="feature-label">History</span>
+          <span className="feature-label">{t('history')}</span>
         </button>
         <button className="feature-cell" onClick={onSettings}>
           <div className="feature-icon-wrap settings"><GearIcon size={20} /></div>
-          <span className="feature-label">Settings</span>
+          <span className="feature-label">{t('settings')}</span>
         </button>
       </div>
 
+      {/* Limits */}
       <div className="limits-card">
         <div className="limits-header">
-          <span>Daily Limit</span>
-          <strong>{formatCurrency(remaining, 'INR')} remaining</strong>
+          <span>{t('dailyLimit')}</span>
+          <strong>{showBalance ? formatCurrency(remaining, 'INR') : '— — —'} {t('remaining')}</strong>
         </div>
         <div className="limits-bar">
           <div className="limits-bar-fill" style={{ width: `${limitPercent}%` }} />
         </div>
-        <p className="limits-remaining">{formatCurrency(dailyLimit, 'INR')} daily send limit</p>
+        <p className="limits-remaining">{formatCurrency(dailyLimit, 'INR')} {t('dailySendLimit')}</p>
       </div>
 
+      {/* Recent */}
       <div className="recent-section" onClick={onHistory}>
-        <h3><ArrowRightIcon size={16} /> Recent Transactions</h3>
+        <h3><ArrowRightIcon size={16} /> {t('recentTransactions')}</h3>
         {recentTxs.length === 0 ? (
-          <div className="empty-state"><ClockIcon size={16} /> <span>No transactions yet</span></div>
+          <div className="empty-state"><ClockIcon size={16} /> <span>{t('noTransactions')}</span></div>
         ) : (
           recentTxs.map(tx => (
             <div key={tx.id} className="recent-tx-item">
@@ -190,23 +458,164 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
         <div className="modal-overlay" onClick={() => setShowLogout(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Log out?</h3>
+              <h3>{t('logoutConfirm')}</h3>
               <button className="modal-close" onClick={() => setShowLogout(false)}>×</button>
             </div>
-            <p className="modal-body-text">
-              You'll need to sign in again to access your wallet.
-            </p>
+            <p className="modal-body-text">{t('logoutBody')}</p>
             <div className="modal-actions">
-              <button className="btn-primary" onClick={() => logout()}>
-                Yes, log out
-              </button>
-              <button className="btn-secondary" onClick={() => setShowLogout(false)}>
-                Cancel
-              </button>
+              <button className="btn-primary" onClick={onLogout}>{t('logoutYes')}</button>
+              <button className="btn-secondary" onClick={() => setShowLogout(false)}>{t('cancel')}</button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function KycScreen({ token, user, onBack, onKycDone }) {
+  const { t } = useTranslation();
+  const [step, setStep] = useState(1);
+  const [aadhaar, setAadhaar] = useState('');
+  const [aadhaarRef, setAadhaarRef] = useState('');
+  const [otp, setOtp] = useState('');
+  const [panNumber, setPanNumber] = useState('');
+  const [panName, setPanName] = useState('');
+  const [emailOtp, setEmailOtp] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+
+  const sendAadhaarOtp = async () => {
+    setLoading(true); setError('');
+    try {
+      const data = await apiFetch('/kyc/aadhaar/send-otp', token, { method: 'POST', body: JSON.stringify({ aadhaarNumber: aadhaar }) });
+      setAadhaarRef(data.referenceId);
+      setStep(2);
+    } catch (e) { setError(e.message); }
+    setLoading(false);
+  };
+
+  const verifyAadhaarOtp = async () => {
+    setLoading(true); setError('');
+    try {
+      await apiFetch('/kyc/aadhaar/verify-otp', token, { method: 'POST', body: JSON.stringify({ referenceId: aadhaarRef, otp }) });
+      setStep(3);
+    } catch (e) { setError(e.message); }
+    setLoading(false);
+  };
+
+  const verifyPan = async () => {
+    setLoading(true); setError('');
+    try {
+      await apiFetch('/kyc/pan/verify', token, { method: 'POST', body: JSON.stringify({ panNumber, name: panName }) });
+      setStep(4);
+    } catch (e) { setError(e.message); }
+    setLoading(false);
+  };
+
+  const sendEmailOtp = async () => {
+    setLoading(true); setError('');
+    try {
+      await apiFetch('/kyc/email/send-otp', token, { method: 'POST' });
+    } catch (e) { setError(e.message); }
+    setLoading(false);
+  };
+
+  const verifyEmailOtp = async () => {
+    setLoading(true); setError('');
+    try {
+      await apiFetch('/kyc/email/verify-otp', token, { method: 'POST', body: JSON.stringify({ otp: emailOtp }) });
+      // Finalize KYC
+      await apiFetch('/kyc/finalize', token, { method: 'POST', body: JSON.stringify({ name: panName }) });
+      setDone(true);
+    } catch (e) { setError(e.message); }
+    setLoading(false);
+  };
+
+  if (done) {
+    return (
+      <div className="success-screen page-enter">
+        <div className="success-card">
+          <div className="success-icon"><CheckIcon size={40} /></div>
+          <h2>{t('kycCompleteTitle')}</h2>
+          <p>{t('kycCompleteMsg')}</p>
+          <button className="btn-primary" onClick={onKycDone}>{t('goToDashboard')}</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="dashboard page-enter">
+      <header className="dash-header">
+        <button className="btn-ghost" onClick={onBack}><ArrowLeftIcon size={16} /> {t('back')}</button>
+        <h3>{t('kycTitle')}</h3>
+        <div />
+      </header>
+
+      <div className="kyc-progress">
+        <div className={`kyc-step ${step >= 1 ? 'active' : ''}`}>1. Aadhaar</div>
+        <div className={`kyc-step ${step >= 3 ? 'active' : ''}`}>2. PAN</div>
+        <div className={`kyc-step ${step >= 4 ? 'active' : ''}`}>3. Email</div>
+      </div>
+
+      {error && <p className="error-text kyc-error"><AlertCircleIcon size={14} /> {error}</p>}
+
+      <div className="kyc-card">
+        {step === 1 && (
+          <div className="kyc-form">
+            <h4><FingerprintIcon size={18} /> {t('stepAadhaar')}</h4>
+            <p className="kyc-desc">{t('enterAadhaar')}</p>
+            <input className="kyc-input" type="text" maxLength={12} value={aadhaar} onChange={e => setAadhaar(e.target.value.replace(/\D/g, ''))} placeholder="1234 5678 9012" />
+            <button className="btn-primary" onClick={sendAadhaarOtp} disabled={loading || aadhaar.length !== 12}>
+              {loading ? t('loading') : t('sendOtp')}
+            </button>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="kyc-form">
+            <h4><FingerprintIcon size={18} /> {t('enterOtp')}</h4>
+            <p className="kyc-desc">{t('otpSentTo')}</p>
+            <input className="kyc-input otp-input" type="text" maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="000000" />
+            <button className="btn-primary" onClick={verifyAadhaarOtp} disabled={loading || otp.length !== 6}>
+              {loading ? t('loading') : t('verifyOtp')}
+            </button>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="kyc-form">
+            <h4><FileIcon size={18} /> {t('stepPan')}</h4>
+            <div className="form-group">
+              <label>{t('enterPan')}</label>
+              <input className="kyc-input" type="text" maxLength={10} value={panNumber} onChange={e => setPanNumber(e.target.value.toUpperCase())} placeholder="ABCDE1234F" />
+            </div>
+            <div className="form-group">
+              <label>{t('enterPanName')}</label>
+              <input className="kyc-input" type="text" value={panName} onChange={e => setPanName(e.target.value)} placeholder="RAJESH KUMAR" />
+            </div>
+            <button className="btn-primary" onClick={verifyPan} disabled={loading || panNumber.length !== 10 || !panName}>
+              {loading ? t('loading') : t('verifyPan')}
+            </button>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="kyc-form">
+            <h4><ContactsIcon size={18} /> {t('stepEmail')}</h4>
+            <p className="kyc-desc">{t('emailOtpSent')}</p>
+            <button className="btn-secondary" onClick={sendEmailOtp} disabled={loading} style={{ marginBottom: 'var(--sp-16)' }}>
+              {loading ? t('loading') : t('verifyEmail')}
+            </button>
+            <input className="kyc-input otp-input" type="text" maxLength={6} value={emailOtp} onChange={e => setEmailOtp(e.target.value.replace(/\D/g, ''))} placeholder="000000" />
+            <button className="btn-primary" onClick={verifyEmailOtp} disabled={loading || emailOtp.length !== 6}>
+              {loading ? t('loading') : t('verifyOtp')}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -263,10 +672,7 @@ function DepositScreen({ token, onBack }) {
     setPolling(true);
     const interval = setInterval(async () => {
       const data = await apiFetch(`/order-status/${upiData.orderId}`, token);
-      if (data.status === 'completed') {
-        setDone(true);
-        setPolling(false);
-      }
+      if (data.status === 'completed') { setDone(true); setPolling(false); }
     }, 3000);
     return () => { clearInterval(interval); setPolling(false); };
   }, [upiData, done, token]);
@@ -274,10 +680,7 @@ function DepositScreen({ token, onBack }) {
   const startUpi = async () => {
     if (!amount || parseFloat(amount) <= 0) return;
     setLoading(true);
-    const data = await apiFetch('/upi-collect', token, {
-      method: 'POST',
-      body: JSON.stringify({ amount: parseFloat(amount) }),
-    });
+    const data = await apiFetch('/upi-collect', token, { method: 'POST', body: JSON.stringify({ amount: parseFloat(amount) }) });
     if (data.upiUrl) setUpiData(data);
     setLoading(false);
   };
@@ -285,10 +688,7 @@ function DepositScreen({ token, onBack }) {
   const startCard = async () => {
     if (!amount || parseFloat(amount) <= 0) return;
     setLoading(true);
-    const data = await apiFetch('/deposit', token, {
-      method: 'POST',
-      body: JSON.stringify({ amount: parseFloat(amount) }),
-    });
+    const data = await apiFetch('/deposit', token, { method: 'POST', body: JSON.stringify({ amount: parseFloat(amount) }) });
     if (data.clientSecret) setClientSecret(data.clientSecret);
     setLoading(false);
   };
@@ -332,7 +732,6 @@ function DepositScreen({ token, onBack }) {
             </div>
           </>
         )}
-
         {method === 'upi' && upiData && (
           <div className="upi-section">
             <UpiQrDisplay upiUrl={upiData.upiUrl} amount={amount} />
@@ -340,7 +739,6 @@ function DepositScreen({ token, onBack }) {
             <p className="deposit-info"><GlobeIcon size={14} /> Or pay via UPI ID: bank@razorpay</p>
           </div>
         )}
-
         {method === 'card' && clientSecret && (
           <Elements stripe={stripePromise} options={{ clientSecret }}>
             <DepositForm amount={amount} token={token} onSuccess={() => setDone(true)} />
@@ -373,30 +771,16 @@ function SendScreen({ token, user, onBack }) {
   const converted = rates && amount ? (parseFloat(amount) * (rates[currency.toUpperCase()] || 1)).toFixed(2) : null;
   const fee = rates && amount ? (parseFloat(amount) * 0.005).toFixed(2) : null;
 
-  const handleReview = () => {
-    if (!amount || !recipient) return;
-    setStep('review');
-  };
+  const handleReview = () => { if (!amount || !recipient) return; setStep('review'); };
 
   const handleSend = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     const data = await apiFetch('/send', token, {
       method: 'POST',
-      body: JSON.stringify({
-        amount: parseFloat(amount),
-        recipient,
-        currency,
-        bankAccount: bankAccount.ifsc ? bankAccount : undefined,
-      }),
+      body: JSON.stringify({ amount: parseFloat(amount), recipient, currency, bankAccount: bankAccount.ifsc ? bankAccount : undefined }),
     });
-    if (data.error) {
-      setError(data.error);
-      setStep('form');
-    } else {
-      setDone(true);
-      setStep('done');
-    }
+    if (data.error) { setError(data.error); setStep('form'); }
+    else { setDone(true); setStep('done'); }
     setLoading(false);
   };
 
@@ -423,46 +807,22 @@ function SendScreen({ token, user, onBack }) {
         </header>
         <div className="send-card">
           <div className="review-card">
-            <div className="review-row">
-              <span>Recipient</span>
-              <span>{recipient}</span>
-            </div>
-            <div className="review-row">
-              <span>Amount</span>
-              <span>{formatCurrency(amount, 'INR')}</span>
-            </div>
+            <div className="review-row"><span>Recipient</span><span>{recipient}</span></div>
+            <div className="review-row"><span>Amount</span><span>{formatCurrency(amount, 'INR')}</span></div>
             {currency !== 'inr' && converted && (
               <>
-                <div className="review-row">
-                  <span>Exchange rate</span>
-                  <span>1 INR = {rates[currency.toUpperCase()]} {currency.toUpperCase()}</span>
-                </div>
-                <div className="review-row">
-                  <span>Recipient gets</span>
-                  <span>{converted} {currency.toUpperCase()}</span>
-                </div>
+                <div className="review-row"><span>Exchange rate</span><span>1 INR = {rates[currency.toUpperCase()]} {currency.toUpperCase()}</span></div>
+                <div className="review-row"><span>Recipient gets</span><span>{converted} {currency.toUpperCase()}</span></div>
               </>
             )}
-            {fee && (
-              <div className="review-row">
-                <span>Fee (0.5%)</span>
-                <span>{formatCurrency(fee, 'INR')}</span>
-              </div>
-            )}
-            <div className="review-row total">
-              <span>Total</span>
-              <span>{formatCurrency((parseFloat(amount) + parseFloat(fee || 0)).toFixed(2), 'INR')}</span>
-            </div>
+            {fee && <div className="review-row"><span>Fee (0.5%)</span><span>{formatCurrency(fee, 'INR')}</span></div>}
+            <div className="review-row total"><span>Total</span><span>{formatCurrency((parseFloat(amount) + parseFloat(fee || 0)).toFixed(2), 'INR')}</span></div>
           </div>
-
           {error && <p className="error-text"><InfoIcon size={14} /> {error}</p>}
-
           <button className="btn-primary" onClick={handleSend} disabled={loading}>
             {loading ? 'Sending...' : <><LockIcon size={16} /> Confirm & Send</>}
           </button>
-          <p className="send-footer-note">
-            <ShieldIcon size={12} /> Secured with 256-bit encryption
-          </p>
+          <p className="send-footer-note"><ShieldIcon size={12} /> Secured with 256-bit encryption</p>
         </div>
       </div>
     );
@@ -480,20 +840,19 @@ function SendScreen({ token, user, onBack }) {
           <div className="form-group">
             <label>Saved Recipients</label>
             <div className="beneficiary-list">
-                {beneficiaries.map(b => (
-                  <button key={b.id} className="beneficiary-chip" onClick={() => { setRecipient(b.name); if (b.ifsc) setBankAccount({ ifsc: b.ifsc, accountNumber: b.accountNumber || '' }); }}>
-                    <span className="beneficiary-avatar" style={{ background: `${getColor(b.name)}20`, color: getColor(b.name) }}>{getInitial(b.name)}</span>
-                    <span className="beneficiary-name">{b.name}</span>
-                  </button>
-                ))}
-                <button className="beneficiary-chip add" onClick={() => setShowAddBeneficiary(!showAddBeneficiary)}>
-                  <span className="beneficiary-avatar add"><UserPlusIcon size={16} /></span>
+              {beneficiaries.map(b => (
+                <button key={b.id} className="beneficiary-chip" onClick={() => { setRecipient(b.name); if (b.ifsc) setBankAccount({ ifsc: b.ifsc, accountNumber: b.accountNumber || '' }); }}>
+                  <span className="beneficiary-avatar" style={{ background: `${getColor(b.name)}20`, color: getColor(b.name) }}>{getInitial(b.name)}</span>
+                  <span className="beneficiary-name">{b.name}</span>
+                </button>
+              ))}
+              <button className="beneficiary-chip add" onClick={() => setShowAddBeneficiary(!showAddBeneficiary)}>
+                <span className="beneficiary-avatar add"><UserPlusIcon size={16} /></span>
                 <span className="beneficiary-name">Add</span>
               </button>
             </div>
           </div>
         )}
-
         {beneficiaries.length === 0 && (
           <div className="form-group">
             <div className="beneficiary-empty">
@@ -502,7 +861,6 @@ function SendScreen({ token, user, onBack }) {
             </div>
           </div>
         )}
-
         {showAddBeneficiary && (
           <div className="add-beneficiary-form">
             <div className="form-group">
@@ -520,17 +878,10 @@ function SendScreen({ token, user, onBack }) {
             <button className="btn-primary" onClick={async () => {
               if (!newBen.name) return;
               const data = await apiFetch('/beneficiaries', token, { method: 'POST', body: JSON.stringify(newBen) });
-              if (data.id) {
-                setBeneficiaries([...beneficiaries, data]);
-                setNewBen({ name: '', ifsc: '', accountNumber: '' });
-                setShowAddBeneficiary(false);
-              }
-            }} disabled={!newBen.name}>
-              Save Recipient
-            </button>
+              if (data.id) { setBeneficiaries([...beneficiaries, data]); setNewBen({ name: '', ifsc: '', accountNumber: '' }); setShowAddBeneficiary(false); }
+            }} disabled={!newBen.name}>Save Recipient</button>
           </div>
         )}
-
         <div className="form-group">
           <label><GlobeIcon size={14} /> Recipient Name</label>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Recipient name" />
@@ -553,7 +904,6 @@ function SendScreen({ token, user, onBack }) {
             <option value="sgd">SGD — Singapore Dollar</option>
           </select>
         </div>
-
         {rates && amount && currency !== 'inr' && (
           <div className="forex-summary">
             <div className="forex-row"><span>Exchange rate</span><span>1 INR = {rates[currency.toUpperCase()] || '—'} {currency.toUpperCase()}</span></div>
@@ -561,7 +911,6 @@ function SendScreen({ token, user, onBack }) {
             <div className="forex-row fee"><span>Fee (0.5%)</span><span>{formatCurrency(fee, 'INR')}</span></div>
           </div>
         )}
-
         <div className="form-group">
           <label><BankIcon size={14} /> Bank Account (optional)</label>
           <div className="bank-fields">
@@ -569,7 +918,6 @@ function SendScreen({ token, user, onBack }) {
             <input type="text" value={bankAccount.accountNumber} onChange={(e) => setBankAccount({ ...bankAccount, accountNumber: e.target.value })} placeholder="Account Number" />
           </div>
         </div>
-
         {error && <p className="error-text"><InfoIcon size={14} /> {error}</p>}
         <button className="btn-primary" onClick={handleReview} disabled={!amount || !recipient}>
           <SendIcon size={18} /> Review Payment
@@ -591,10 +939,7 @@ function HistoryScreen({ token, onBack }) {
   }, [token]);
 
   const filtered = txs.filter(tx => {
-    const matchesSearch = !search ||
-      tx.recipient?.toLowerCase().includes(search.toLowerCase()) ||
-      tx.amount?.toString().includes(search) ||
-      tx.id?.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = !search || tx.recipient?.toLowerCase().includes(search.toLowerCase()) || tx.amount?.toString().includes(search) || tx.id?.toLowerCase().includes(search.toLowerCase());
     const matchesFilter = filter === 'all' || tx.type === filter;
     return matchesSearch && matchesFilter;
   });
@@ -613,30 +958,17 @@ function HistoryScreen({ token, onBack }) {
         <h3>Transaction History</h3>
         <div />
       </header>
-
       <div className="search-bar">
-          <span className="search-icon"><SearchIcon size={16} /></span>
-          <input
-            className="search-input"
-            type="text"
-            placeholder="Search by name, amount, or ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <span className="search-icon"><SearchIcon size={16} /></span>
+        <input className="search-input" type="text" placeholder="Search by name, amount, or ID..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
-
       <div className="filter-row">
         {['all', 'deposit', 'send'].map(f => (
-          <button
-            key={f}
-            className={`filter-btn ${filter === f ? 'active' : ''}`}
-            onClick={() => setFilter(f)}
-          >
+          <button key={f} className={`filter-btn ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
             {f === 'all' ? 'All' : f === 'deposit' ? 'Received' : 'Sent'}
           </button>
         ))}
       </div>
-
       <div className="tx-list">
         {loading && <p className="empty-state">Loading...</p>}
         {!loading && filtered.length === 0 && (
@@ -648,9 +980,7 @@ function HistoryScreen({ token, onBack }) {
             {items.map(tx => (
               <div key={tx.id} className="tx-item" onClick={() => setSelectedTx(tx)}>
                 <div className="tx-info">
-                  <span className={`tx-icon ${tx.type}`}>
-                    {tx.type === 'deposit' ? <ReceiveIcon size={16} /> : <SendIcon size={16} />}
-                  </span>
+                  <span className={`tx-icon ${tx.type}`}>{tx.type === 'deposit' ? <ReceiveIcon size={16} /> : <SendIcon size={16} />}</span>
                   <div className="tx-details">
                     <span className="tx-type">{tx.type}</span>
                     <span className="tx-recipient">{tx.recipient || '—'}</span>
@@ -658,15 +988,14 @@ function HistoryScreen({ token, onBack }) {
                 </div>
                 <div className="tx-right">
                   <span className="tx-amount">{tx.type === 'deposit' ? '+' : '-'}{formatCurrency(tx.amount, 'INR')}</span>
-                  {tx.status === 'failed' ? <XCircleIcon size={14} /> : null}
-              <span className={`tx-status ${tx.status}`}>{tx.status}</span>
+                  {tx.status === 'failed' && <XCircleIcon size={14} />}
+                  <span className={`tx-status ${tx.status}`}>{tx.status}</span>
                 </div>
               </div>
             ))}
           </div>
         ))}
       </div>
-
       {selectedTx && (
         <div className="modal-overlay" onClick={() => setSelectedTx(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -674,58 +1003,18 @@ function HistoryScreen({ token, onBack }) {
               <h3>Transaction Details</h3>
               <button className="modal-close" onClick={() => setSelectedTx(null)}>×</button>
             </div>
-
-            <div className={`modal-tx-icon ${selectedTx.type}`}>
-              {selectedTx.type === 'deposit' ? <ReceiveIcon size={24} /> : <SendIcon size={24} />}
-            </div>
-
-            <div className={`modal-amount ${selectedTx.type === 'deposit' ? 'positive' : 'negative'}`}>
-              {selectedTx.type === 'deposit' ? '+' : '-'}{formatCurrency(selectedTx.amount, 'INR')}
-            </div>
-
-            <div className="modal-status">
-              <span className={`tx-status ${selectedTx.status}`}>{selectedTx.status}</span>
-            </div>
-
+            <div className={`modal-tx-icon ${selectedTx.type}`}>{selectedTx.type === 'deposit' ? <ReceiveIcon size={24} /> : <SendIcon size={24} />}</div>
+            <div className={`modal-amount ${selectedTx.type === 'deposit' ? 'positive' : 'negative'}`}>{selectedTx.type === 'deposit' ? '+' : '-'}{formatCurrency(selectedTx.amount, 'INR')}</div>
+            <div className="modal-status"><span className={`tx-status ${selectedTx.status}`}>{selectedTx.status}</span></div>
             <div className="modal-details">
-              <div className="modal-detail-row">
-                <span>Type</span>
-                <span style={{ textTransform: 'capitalize' }}>{selectedTx.type}</span>
-              </div>
-              <div className="modal-detail-row">
-                <span>Date</span>
-                <span>{new Date(selectedTx.createdAt).toLocaleString('en-IN')}</span>
-              </div>
-              {selectedTx.recipient && (
-                <div className="modal-detail-row">
-                  <span>{selectedTx.type === 'send' ? 'Recipient' : 'Sender'}</span>
-                  <span>{selectedTx.recipient}</span>
-                </div>
-              )}
-              <div className="modal-detail-row">
-                <span>Transaction ID</span>
-                <span>{selectedTx.id?.slice(0, 16)}...</span>
-              </div>
-              {selectedTx.stripeId && (
-                <div className="modal-detail-row">
-                  <span>Stripe ID</span>
-                  <span>{selectedTx.stripeId}</span>
-                </div>
-              )}
-              {selectedTx.razorpayId && (
-                <div className="modal-detail-row">
-                  <span>Razorpay ID</span>
-                  <span>{selectedTx.razorpayId}</span>
-                </div>
-              )}
+              <div className="modal-detail-row"><span>Type</span><span style={{ textTransform: 'capitalize' }}>{selectedTx.type}</span></div>
+              <div className="modal-detail-row"><span>Date</span><span>{new Date(selectedTx.createdAt).toLocaleString('en-IN')}</span></div>
+              {selectedTx.recipient && <div className="modal-detail-row"><span>{selectedTx.type === 'send' ? 'Recipient' : 'Sender'}</span><span>{selectedTx.recipient}</span></div>}
+              <div className="modal-detail-row"><span>Transaction ID</span><span>{selectedTx.id?.slice(0, 16)}...</span></div>
+              {selectedTx.stripeId && <div className="modal-detail-row"><span>Stripe ID</span><span>{selectedTx.stripeId}</span></div>}
+              {selectedTx.razorpayId && <div className="modal-detail-row"><span>Razorpay ID</span><span>{selectedTx.razorpayId}</span></div>}
             </div>
-
-            <a
-              className="modal-link"
-              href={`https://dashboard.stripe.com/payments/${selectedTx.stripeId || ''}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a className="modal-link" href={`https://dashboard.stripe.com/payments/${selectedTx.stripeId || ''}`} target="_blank" rel="noopener noreferrer">
               <LinkIcon size={14} /> View on Stripe Dashboard
             </a>
           </div>
@@ -735,50 +1024,180 @@ function HistoryScreen({ token, onBack }) {
   );
 }
 
-function SettingsScreen({ user, onBack }) {
-  const { logout } = useLogout();
+function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser }) {
+  const { t, i18n: i18nInst } = useTranslation();
+  const [showBalance, setShowBalance] = useState(() => localStorage.getItem('showBalance') !== 'false');
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') !== 'false');
+  const [notifSend, setNotifSend] = useState(() => localStorage.getItem('notifSend') !== 'false');
+  const [notifDeposit, setNotifDeposit] = useState(() => localStorage.getItem('notifDeposit') !== 'false');
+  const [phone, setPhone] = useState(() => localStorage.getItem('phone') || '');
+  const [waEnabled, setWaEnabled] = useState(() => localStorage.getItem('waEnabled') === 'true');
+  const [savingWA, setSavingWA] = useState(false);
+  const [waStatus, setWaStatus] = useState('');
+  const [privacyPin, setPrivacyPin] = useState(() => localStorage.getItem('privacyPin') === 'true');
+  const [expandedFaq, setExpandedFaq] = useState(null);
+  const [totpQr, setTotpQr] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [totpStep, setTotpStep] = useState('idle');
+  const [totpErr, setTotpErr] = useState('');
+  const [totpLoading, setTotpLoading] = useState(false);
+  const [webauthnCreds, setWebauthnCreds] = useState([]);
+  const [waLoading, setWaLoading] = useState(false);
+
+  // Spending limit
+  const [sendLimitInput, setSendLimitInput] = useState(user.sendLimit || 100000);
+  const [sendLimitSaving, setSendLimitSaving] = useState(false);
+  const [sendLimitStatus, setSendLimitStatus] = useState('');
+
+  // Device management
+  const [devices, setDevices] = useState([]);
+  const [devicesLoading, setDevicesLoading] = useState(true);
+
+  // Auto-lock
+  const [autoLockTimer, setAutoLockTimer] = useState(() => localStorage.getItem('autoLockTimer') || 'off');
+
+  // Account management
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(user.name || '');
+
+  const loadWebauthnCreds = async () => {
+    try { const d = await apiFetch('/webauthn/credentials', token); setWebauthnCreds(d.credentials); } catch {}
+  };
+  useEffect(() => { loadWebauthnCreds(); }, [token]);
+
+  useEffect(() => {
+    apiFetch('/device/fingerprints', token).then(d => { setDevices(d.devices || []); setDevicesLoading(false); }).catch(() => setDevicesLoading(false));
+  }, [token]);
+
+  const startTotpSetup = async () => {
+    setTotpLoading(true); setTotpErr('');
+    try { const d = await apiFetch('/totp/setup', token); setTotpQr(d.qrDataUrl); setTotpStep('verify'); setTotpCode(''); } catch (e) { setTotpErr(e.message); }
+    setTotpLoading(false);
+  };
+  const verifyTotpEnable = async () => {
+    setTotpLoading(true); setTotpErr('');
+    try { await apiFetch('/totp/verify-enable', token, { method: 'POST', body: JSON.stringify({ token: totpCode }) }); setTotpStep('idle'); setTotpQr(''); onRefreshUser(); } catch (e) { setTotpErr(e.message); }
+    setTotpLoading(false);
+  };
+  const disableTotp = async () => {
+    setTotpLoading(true); setTotpErr('');
+    try { await apiFetch('/totp/disable', token, { method: 'POST', body: JSON.stringify({ token: totpCode }) }); setTotpStep('idle'); setTotpQr(''); onRefreshUser(); } catch (e) { setTotpErr(e.message); }
+    setTotpLoading(false);
+  };
+  const registerBiometric = async () => {
+    setWaLoading(true);
+    try {
+      const opts = await apiFetch('/webauthn/register/begin', token, { method: 'POST' });
+      const attResp = await startRegistration(opts);
+      await apiFetch('/webauthn/register/complete', token, { method: 'POST', body: JSON.stringify({ ...attResp, deviceName: navigator.userAgent?.slice(0, 64) || 'Unknown' }) });
+      await loadWebauthnCreds();
+    } catch (e) { setTotpErr(e.message || 'Biometric registration failed'); }
+    setWaLoading(false);
+  };
+  const removeCredential = async (id) => {
+    try { await apiFetch(`/webauthn/credentials/${id}`, token, { method: 'DELETE' }); await loadWebauthnCreds(); } catch {}
+  };
+
+  const toggleBool = (key, setter) => {
+    const next = !JSON.parse(localStorage.getItem(key) ?? (key === 'privacyPin' ? 'false' : 'true'));
+    setter(next);
+    localStorage.setItem(key, next);
+    if (key === 'darkMode') {
+      document.documentElement.setAttribute('data-theme', next ? '' : 'light');
+      if (next) document.documentElement.removeAttribute('data-theme');
+    }
+  };
+
+  const faqItems = [
+    { qKey: 'faq1Q', aKey: 'faq1A' },
+    { qKey: 'faq2Q', aKey: 'faq2A' },
+    { qKey: 'faq3Q', aKey: 'faq3A' },
+    { qKey: 'faq4Q', aKey: 'faq4A' },
+  ];
+
+  const fmtIST = (d) => new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const joinedDate = user.createdAt ? fmtIST(user.createdAt) : 'N/A';
+  const lastLoginDate = user.lastLogin ? fmtIST(user.lastLogin) : 'N/A';
+
+  const saveSendLimit = async () => {
+    setSendLimitSaving(true); setSendLimitStatus('');
+    try {
+      await apiFetch('/auth/send-limit', token, { method: 'PUT', body: JSON.stringify({ sendLimit: parseInt(sendLimitInput) }) });
+      setSendLimitStatus(t('saved')); onRefreshUser();
+    } catch { setSendLimitStatus(t('error')); }
+    setSendLimitSaving(false);
+  };
+
+  const saveName = async () => {
+    try {
+      await apiFetch('/auth/profile', token, { method: 'PUT', body: JSON.stringify({ name: nameInput }) });
+      setEditingName(false); onRefreshUser();
+    } catch {}
+  };
+
+  const deleteAccount = async () => {
+    try { await apiFetch('/auth/delete-account', token, { method: 'POST' }); onLogout(); } catch {}
+  };
+
+  const Toggle = ({ checked, onChange }) => (
+    <label className="settings-toggle">
+      <div className={`settings-toggle-track ${checked ? 'active' : ''}`}>
+        <div className="settings-toggle-thumb" />
+        <input type="checkbox" checked={checked} onChange={onChange} hidden />
+      </div>
+    </label>
+  );
 
   return (
     <div className="dashboard page-enter">
       <header className="dash-header">
-        <button className="btn-ghost" onClick={onBack}><ArrowLeftIcon size={16} /> Back</button>
-        <h3>Settings</h3>
+        <button className="btn-ghost" onClick={onBack}><ArrowLeftIcon size={16} /> {t('back')}</button>
+        <h3>{t('settingsTitle')}</h3>
         <div />
       </header>
 
+      {/* Profile Card */}
       <div className="settings-section">
         <div className="settings-card">
-          <div className="settings-avatar">
-            <BitcoinIcon size={32} />
-          </div>
+          <div className="settings-avatar"><BitcoinIcon size={32} /></div>
           <div className="settings-user-info">
-            <span className="settings-email">{user.email || 'User'}</span>
-            <span className="settings-id">ID: {user.userId?.slice(0, 12)}...</span>
+            <span className="settings-email">{user.name || user.email || 'User'}</span>
+            <span className="settings-email-sub">{user.email}</span>
+            <span className="settings-id">{t('id')}: {user.userId?.slice(0, 12)}...</span>
+          </div>
+          <div className="settings-profile-details">
+            {user.name && <div className="settings-detail-row"><ContactsIcon size={14} /><span>{user.name}</span></div>}
+            {user.aadhaarMasked && <div className="settings-detail-row"><FingerprintIcon size={14} /><span>{user.aadhaarMasked}</span></div>}
+            {user.panMasked && <div className="settings-detail-row"><FileIcon size={14} /><span>{user.panMasked}</span></div>}
+            {user.verifiedDob && <div className="settings-detail-row"><ClockIcon size={14} /><span>{user.verifiedDob}</span></div>}
+            {user.verifiedAddress && <div className="settings-detail-row"><HomeIcon size={14} /><span>{user.verifiedAddress}</span></div>}
           </div>
         </div>
       </div>
 
+      {/* KYC */}
       <div className="settings-section">
-        <h4 className="settings-section-title">Security</h4>
+        <h4 className="settings-section-title">{t('security')}</h4>
         <div className="settings-card">
-          <div className="settings-row">
+          <div className="settings-row" style={{ cursor: 'pointer' }} onClick={onKyc}>
             <div className="settings-row-left">
               <ShieldIcon size={18} />
               <div>
-                <span className="settings-row-label">KYC Status</span>
-                <span className="settings-row-value">{user.kyc === 'verified' ? 'Verified' : 'Pending'}</span>
+                <span className="settings-row-label">{t('kycStatus')}</span>
+                <span className="settings-row-value">{user.kyc === 'verified' ? t('verified') : t('kycPending')}</span>
               </div>
             </div>
             <span className={`settings-badge ${user.kyc === 'verified' ? 'verified' : 'pending'}`}>
-              {user.kyc === 'verified' ? '✓' : '…'}
+              {user.kyc === 'verified' ? '✓' : '→'}
             </span>
           </div>
           <div className="settings-row">
             <div className="settings-row-left">
               <LockIcon size={18} />
               <div>
-                <span className="settings-row-label">Encryption</span>
-                <span className="settings-row-value">256-bit AES</span>
+                <span className="settings-row-label">{t('encryption')}</span>
+                <span className="settings-row-value">{t('aes256')}</span>
               </div>
             </div>
             <span className="settings-badge verified">✓</span>
@@ -786,157 +1205,521 @@ function SettingsScreen({ user, onBack }) {
         </div>
       </div>
 
+      {/* Security Checklist */}
       <div className="settings-section">
-        <h4 className="settings-section-title">Limits</h4>
+        <h4 className="settings-section-title">{t('securityChecklist')}</h4>
+        <div className="settings-card">
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <ShieldIcon size={18} />
+              <div><span className="settings-row-label">{t('kycStatus')}</span><span className="settings-row-value">{user.kyc === 'verified' ? t('verified') : t('unverified')}</span></div>
+            </div>
+            <span className={`settings-badge ${user.kyc === 'verified' ? 'verified' : ''}`}>{user.kyc === 'verified' ? '✓' : '—'}</span>
+          </div>
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <KeyIcon size={18} />
+              <div><span className="settings-row-label">{t('totpTitle')}</span><span className="settings-row-value">{user.totpEnabled ? t('enabled') : t('disabled')}</span></div>
+            </div>
+            <span className={`settings-badge ${user.totpEnabled ? 'verified' : ''}`}>{user.totpEnabled ? '✓' : '—'}</span>
+          </div>
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <FingerprintIcon size={18} />
+              <div><span className="settings-row-label">{t('biometric')}</span><span className="settings-row-value">{webauthnCreds.length > 0 ? `${webauthnCreds.length} ${t('registeredDevices')}` : t('disabled')}</span></div>
+            </div>
+            <span className={`settings-badge ${webauthnCreds.length > 0 ? 'verified' : ''}`}>{webauthnCreds.length > 0 ? '✓' : '—'}</span>
+          </div>
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <MailIcon size={18} />
+              <div><span className="settings-row-label">{t('emailVerified')}</span><span className="settings-row-value">{user.emailVerified ? t('verified') : t('unverified')}</span></div>
+            </div>
+            <span className={`settings-badge ${user.emailVerified ? 'verified' : ''}`}>{user.emailVerified ? '✓' : '—'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* TOTP */}
+      <div className="settings-section">
+        <h4 className="settings-section-title">{t('totpTitle')}</h4>
+        <div className="settings-card">
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <KeyIcon size={18} />
+              <div>
+                <span className="settings-row-label">{t('totpTitle')}</span>
+                <span className="settings-row-value">{user.totpEnabled ? t('totpEnabled') : t('off')}</span>
+              </div>
+            </div>
+            <span className={`settings-badge ${user.totpEnabled ? 'verified' : ''}`}>
+              {user.totpEnabled ? '✓' : '—'}
+            </span>
+          </div>
+          {totpStep === 'verify' && totpQr && (
+            <div className="settings-expanded">
+              {totpErr && <p className="error-text">{totpErr}</p>}
+              <p className="settings-row-value">{t('scanQrCode')}</p>
+              <div className="totp-qr-wrap"><img src={totpQr} alt="TOTP QR" /></div>
+              <input className="settings-input otp-input" type="text" maxLength={6} value={totpCode} onChange={e => setTotpCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" />
+              <button className="btn-primary" onClick={verifyTotpEnable} disabled={totpLoading || totpCode.length !== 6}>
+                {totpLoading ? t('loading') : t('verifyTotp')}
+              </button>
+            </div>
+          )}
+          {totpStep === 'disable' && (
+            <div className="settings-expanded">
+              {totpErr && <p className="error-text">{totpErr}</p>}
+              <p className="settings-row-value">{t('disableTotpConfirm')}</p>
+              <input className="settings-input otp-input" type="text" maxLength={6} value={totpCode} onChange={e => setTotpCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" />
+              <button className="btn-secondary" onClick={disableTotp} disabled={totpLoading || totpCode.length !== 6} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+                {totpLoading ? t('loading') : t('disableTotp')}
+              </button>
+            </div>
+          )}
+          {totpStep === 'idle' && !user.totpEnabled && (
+            <div className="settings-expanded">
+              <p className="settings-row-value">{t('totpDesc')}</p>
+              <button className="btn-primary" onClick={startTotpSetup} disabled={totpLoading}>
+                {totpLoading ? t('loading') : t('setupTotp')}
+              </button>
+            </div>
+          )}
+          {user.totpEnabled && totpStep === 'idle' && (
+            <div className="settings-expanded">
+              <p className="settings-row-value"><CheckIcon size={14} /> {t('totpEnabled')}</p>
+              <button className="btn-secondary" onClick={() => setTotpStep('disable')}>{t('disableTotp')}</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Biometric */}
+      <div className="settings-section">
+        <h4 className="settings-section-title">{t('biometricTitle')}</h4>
+        <div className="settings-card">
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <FingerprintIcon size={18} />
+              <div>
+                <span className="settings-row-label">{t('biometricTitle')}</span>
+                <span className="settings-row-value">{webauthnCreds.length > 0 ? `${webauthnCreds.length} ${t('registeredDevices')}` : t('noBiometrics')}</span>
+              </div>
+            </div>
+          </div>
+          <div className="settings-expanded">
+            {webauthnCreds.length > 0 && (
+              <div className="webauthn-list">
+                {webauthnCreds.map(c => (
+                  <div key={c.id} className="webauthn-row">
+                    <span className="settings-row-value">{c.deviceName || t('deviceName')}</span>
+                    <button className="btn-link" style={{ color: 'var(--danger)' }} onClick={() => removeCredential(c.id)}>{t('removeDevice')}</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button className="btn-primary" onClick={registerBiometric} disabled={waLoading}>
+              {waLoading ? t('loading') : t('addBiometric')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Spending Limit */}
+      <div className="settings-section">
+        <h4 className="settings-section-title">{t('spendingLimit')}</h4>
+        <div className="settings-card">
+          <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--sp-8)' }}>
+            <div className="settings-row-left">
+              <div><span className="settings-row-label">{t('spendingLimit')}</span><span className="settings-row-value">{t('spendingLimitDesc')}</span></div>
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--sp-8)' }}>
+              <input className="settings-input" type="number" min="500" max="500000" step="1000" value={sendLimitInput} onChange={e => setSendLimitInput(e.target.value)} style={{ flex: 1 }} />
+              <button className="settings-save-btn" onClick={saveSendLimit} disabled={sendLimitSaving} style={{ width: 'auto', padding: 'var(--sp-8) var(--sp-16)' }}>
+                {sendLimitSaving ? t('loading') : sendLimitStatus || t('saveLimit')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Device Management */}
+      <div className="settings-section">
+        <h4 className="settings-section-title">{t('deviceManagement')}</h4>
+        <div className="settings-card">
+          {devicesLoading ? (
+            <div className="settings-row"><span className="settings-row-value">{t('loading')}</span></div>
+          ) : devices.length === 0 ? (
+            <div className="settings-row"><span className="settings-row-value">{t('noDevices')}</span></div>
+          ) : (
+            devices.map((d, i) => (
+              <div key={d.hash || i} className="settings-device-row">
+                <span className="settings-device-hash">{d.hash?.slice(0, 16)}...</span>
+                <span className="settings-device-date">{t('firstSeen')}: {new Date(d.firstSeen).toLocaleDateString()}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* General */}
+      <div className="settings-section">
+        <h4 className="settings-section-title">{t('general')}</h4>
+        <div className="settings-card">
+          <div className="settings-row">
+            <div className="settings-row-left">
+              {darkMode ? <MoonIcon size={18} /> : <SunIcon size={18} />}
+              <div>
+                <span className="settings-row-label">{t('darkMode')}</span>
+                <span className="settings-row-value">{darkMode ? t('on') : t('off')}</span>
+              </div>
+            </div>
+            <Toggle checked={darkMode} onChange={() => toggleBool('darkMode', setDarkMode)} />
+          </div>
+          <div className="settings-row" style={{ cursor: 'pointer' }} onClick={() => {
+            const langs = ['en', 'hi', 'es', 'fr', 'ar'];
+            const idx = langs.indexOf(i18nInst.language);
+            const next = langs[(idx + 1) % langs.length];
+            i18nInst.changeLanguage(next);
+            localStorage.setItem('lang', next);
+          }}>
+            <div className="settings-row-left">
+              <GlobeIcon size={18} />
+              <div>
+                <span className="settings-row-label">{t('language')}</span>
+                <span className="settings-row-value">{{ en: 'English', hi: 'हिन्दी', es: 'Español', fr: 'Français', ar: 'العربية' }[i18nInst.language] || 'English'}</span>
+              </div>
+            </div>
+            <ArrowRightIcon size={16} />
+          </div>
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <BitcoinIcon size={18} />
+              <div>
+                <span className="settings-row-label">{t('currency')}</span>
+                <span className="settings-row-value">{t('inr')}</span>
+              </div>
+            </div>
+            <ArrowRightIcon size={16} />
+          </div>
+        </div>
+      </div>
+
+      {/* Fees */}
+      <div className="settings-section">
+        <h4 className="settings-section-title">{t('fees')}</h4>
         <div className="settings-card">
           <div className="settings-row">
             <div className="settings-row-left">
               <SendIcon size={18} />
-              <div>
-                <span className="settings-row-label">Daily Send Limit</span>
-                <span className="settings-row-value">₹1,00,000</span>
-              </div>
+              <div><span className="settings-row-label">{t('send')}</span><span className="settings-row-value">{t('sendFee')}</span></div>
             </div>
           </div>
           <div className="settings-row">
             <div className="settings-row-left">
               <ReceiveIcon size={18} />
-              <div>
-                <span className="settings-row-label">Deposit Limit</span>
-                <span className="settings-row-value">Unlimited</span>
-              </div>
+              <div><span className="settings-row-label">{t('deposit')}</span><span className="settings-row-value">{t('depositFee')}</span></div>
+            </div>
+          </div>
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <BankIcon size={18} />
+              <div><span className="settings-row-label">{t('expressDelivery')}</span><span className="settings-row-value">{t('expressFee')}</span></div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Privacy */}
       <div className="settings-section">
-        <h4 className="settings-section-title">Preferences</h4>
+        <h4 className="settings-section-title">{t('privacy')}</h4>
         <div className="settings-card">
           <div className="settings-row">
             <div className="settings-row-left">
-              <BellIcon size={18} />
-              <div>
-                <span className="settings-row-label">Notifications</span>
-                <span className="settings-row-value">Transaction alerts</span>
-              </div>
+              <EyeIcon size={18} />
+              <div><span className="settings-row-label">{t('showBalance')}</span><span className="settings-row-value">{t('showBalanceDesc')}</span></div>
             </div>
-            <ArrowRightIcon size={16} />
+            <Toggle checked={showBalance} onChange={() => toggleBool('showBalance', setShowBalance)} />
           </div>
           <div className="settings-row">
             <div className="settings-row-left">
-              <GlobeIcon size={18} />
-              <div>
-                <span className="settings-row-label">Currency</span>
-                <span className="settings-row-value">INR</span>
-              </div>
+              <FingerprintIcon size={18} />
+              <div><span className="settings-row-label">{t('privacyPin')}</span><span className="settings-row-value">{t('privacyPinDesc')}</span></div>
             </div>
-            <ArrowRightIcon size={16} />
+            <Toggle checked={privacyPin} onChange={() => toggleBool('privacyPin', setPrivacyPin)} />
+          </div>
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <ClockIcon size={18} />
+              <div><span className="settings-row-label">{t('autoLock')}</span><span className="settings-row-value">{t('autoLockDesc')}</span></div>
+            </div>
+            {user.totpEnabled ? (
+              <select className="settings-select" style={{ width: 'auto', minWidth: 100 }} value={autoLockTimer} onChange={e => { const v = e.target.value; setAutoLockTimer(v); localStorage.setItem('autoLockTimer', v); }}>
+                <option value="off">{t('autoLockOff')}</option>
+                <option value="1">{t('autoLock1min')}</option>
+                <option value="5">{t('autoLock5min')}</option>
+                <option value="15">{t('autoLock15min')}</option>
+              </select>
+            ) : (
+              <span className="settings-row-value">{t('autoLockRequiresTotp')}</span>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Account */}
       <div className="settings-section">
-        <h4 className="settings-section-title">Support</h4>
+        <h4 className="settings-section-title">{t('account')}</h4>
         <div className="settings-card">
-          <div className="settings-row">
-            <div className="settings-row-left">
-              <QuestionCircleIcon size={18} />
-              <div>
-                <span className="settings-row-label">Help Center</span>
-                <span className="settings-row-value">FAQs & support</span>
-              </div>
-            </div>
-            <ArrowRightIcon size={16} />
-          </div>
           <div className="settings-row">
             <div className="settings-row-left">
               <InfoIcon size={18} />
+              <div><span className="settings-row-label">{t('joined')}</span><span className="settings-row-value">{joinedDate}</span></div>
+            </div>
+          </div>
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <ClockIcon size={18} />
+              <div><span className="settings-row-label">{t('lastLogin')}</span><span className="settings-row-value">{lastLoginDate}</span></div>
+            </div>
+          </div>
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <ContactsIcon size={18} />
+              <div><span className="settings-row-label">{t('fullName')}</span><span className="settings-row-value">{user.name || '—'}</span></div>
+            </div>
+            <button className="btn-link" onClick={() => { setNameInput(user.name || ''); setEditingName(!editingName); }}>{t('editName')}</button>
+          </div>
+          {editingName && (
+            <div className="settings-expanded">
+              <input className="settings-input" type="text" value={nameInput} onChange={e => setNameInput(e.target.value)} placeholder={t('fullName')} />
+              <button className="settings-save-btn" onClick={saveName} disabled={!nameInput}>{t('saveName')}</button>
+            </div>
+          )}
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <ExitIcon size={18} style={{ color: 'var(--danger)' }} />
+              <div><span className="settings-row-label" style={{ color: 'var(--danger)' }}>{t('deleteAccount')}</span></div>
+            </div>
+            <button className="btn-link" style={{ color: 'var(--danger)' }} onClick={() => setShowDeleteConfirm(true)}>{t('deleteAccountBtn')}</button>
+          </div>
+          {showDeleteConfirm && (
+            <div className="settings-expanded">
+              <p className="settings-danger-text">{t('deleteAccountConfirm')}</p>
+              <button className="settings-delete-btn" onClick={deleteAccount}>{t('deleteAccountBtn')}</button>
+              <button className="btn-secondary" onClick={() => setShowDeleteConfirm(false)}>{t('cancel')}</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Notifications */}
+      <div className="settings-section">
+        <h4 className="settings-section-title">{t('notifications')}</h4>
+        <div className="settings-card">
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <SendIcon size={18} />
+              <div><span className="settings-row-label">{t('sendAlerts')}</span><span className="settings-row-value">{t('sendAlertsDesc')}</span></div>
+            </div>
+            <Toggle checked={notifSend} onChange={() => toggleBool('notifSend', setNotifSend)} />
+          </div>
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <ReceiveIcon size={18} />
+              <div><span className="settings-row-label">{t('depositAlerts')}</span><span className="settings-row-value">{t('depositAlertsDesc')}</span></div>
+            </div>
+            <Toggle checked={notifDeposit} onChange={() => toggleBool('notifDeposit', setNotifDeposit)} />
+          </div>
+        </div>
+      </div>
+
+      {/* WhatsApp */}
+      <div className="settings-section">
+        <h4 className="settings-section-title">{t('whatsapp')}</h4>
+        <div className="settings-card">
+          <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--sp-8)' }}>
+            <div className="settings-row-left">
+              <div style={{ flex: 1 }}><span className="settings-row-label">{t('phoneNumber')}</span><span className="settings-row-value">{t('phoneHint')}</span></div>
+            </div>
+            <input className="settings-input" type="tel" placeholder="+919876543210" value={phone} onChange={e => { setPhone(e.target.value); localStorage.setItem('phone', e.target.value); }} />
+          </div>
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <BellIcon size={18} />
+              <div><span className="settings-row-label">{t('waAlerts')}</span><span className="settings-row-value">{t('waAlertsDesc')}</span></div>
+            </div>
+            <Toggle checked={waEnabled} onChange={() => { const next = !waEnabled; setWaEnabled(next); localStorage.setItem('waEnabled', next); }} />
+          </div>
+          <div className="settings-row">
+            <button className="settings-save-btn" onClick={async () => {
+              setSavingWA(true); setWaStatus('');
+              try { await apiFetch('/notifications/prefs', token, { method: 'POST', body: JSON.stringify({ phone, notifyWhatsApp: waEnabled }) }); setWaStatus(t('saved')); } catch { setWaStatus(t('error')); }
+              setSavingWA(false);
+            }}>{savingWA ? t('saving') : waStatus || t('save')}</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Support */}
+      <div className="settings-section">
+        <h4 className="settings-section-title">{t('support')}</h4>
+        <div className="settings-card">
+          {faqItems.map((item, i) => (
+            <div key={i} className="settings-row settings-row-faq" onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}>
+              <div className="settings-row-left">
+                <QuestionCircleIcon size={18} />
+                <div className="settings-faq-content">
+                  <span className="settings-row-label">{t(item.qKey)}</span>
+                  {expandedFaq === i && <span className="settings-row-value settings-faq-answer">{t(item.aKey)}</span>}
+                </div>
+              </div>
+              <ChevronDownIcon size={16} className={`settings-faq-chevron ${expandedFaq === i ? 'open' : ''}`} />
+            </div>
+          ))}
+          <a className="settings-row settings-btn" href="mailto:support@sendly.app" style={{ textDecoration: 'none' }}>
+            <div className="settings-row-left">
+              <InfoIcon size={18} />
               <div>
-                <span className="settings-row-label">About</span>
-                <span className="settings-row-value">Version 1.0.0</span>
+                <span className="settings-row-label">{t('emailSupport')}</span>
+                <span className="settings-row-value">{t('emailSupportDesc')}</span>
               </div>
             </div>
             <ArrowRightIcon size={16} />
+          </a>
+        </div>
+      </div>
+
+      {/* About */}
+      <div className="settings-section">
+        <div className="settings-card">
+          <div className="settings-row settings-row-about">
+            <div className="settings-row-left">
+              <InfoIcon size={18} />
+              <div><span className="settings-row-label">{t('about')}</span><span className="settings-row-value">{t('aboutVersion')}</span></div>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="settings-section">
         <div className="settings-card">
-          <button className="settings-row settings-btn" onClick={() => logout()}>
+          <button className="settings-row settings-btn" onClick={onLogout}>
             <div className="settings-row-left" style={{ color: 'var(--danger)' }}>
               <ExitIcon size={18} />
-              <div>
-                <span className="settings-row-label" style={{ color: 'var(--danger)' }}>Log Out</span>
-                <span className="settings-row-value" style={{ color: 'var(--danger)' }}>Sign out of your account</span>
-              </div>
+              <div><span className="settings-row-label" style={{ color: 'var(--danger)' }}>{t('logOut')}</span><span className="settings-row-value" style={{ color: 'var(--danger)' }}>{t('logOutDesc')}</span></div>
             </div>
             <ArrowRightIcon size={16} />
           </button>
         </div>
       </div>
-
     </div>
   );
 }
 
 export default function App() {
-  const { ready, authenticated, user: privyUser } = usePrivy();
-  const { getAccessToken } = useToken();
+  const { t } = useTranslation();
   const [screen, setScreen] = useState('login');
   const [user, setUser] = useState(null);
   const [token, setToken] = useState('');
-  const [authenticating, setAuthenticating] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
-  const fetchedRef = useRef(false);
-
-  const fetchUser = useCallback(async () => {
-    try {
-      setAuthError('');
-      setAuthenticating(true);
-      const t = await getAccessToken();
-      if (!t) { setAuthenticating(false); return; }
-      setToken(t);
-      const data = await apiFetch('/auth/verify', t, { method: 'POST' });
-      setUser(data);
-      setScreen('dashboard');
-    } catch (err) {
-      setAuthError(err.message || 'Login failed');
-      setScreen('login');
-    } finally {
-      setAuthenticating(false);
-    }
-  }, [getAccessToken]);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [resetOobCode, setResetOobCode] = useState('');
 
   useEffect(() => {
-    if (authenticated && !fetchedRef.current) {
-      fetchedRef.current = true;
-      fetchUser();
-    } else if (ready && !authenticated) {
-      fetchedRef.current = false;
-      setScreen('login');
-    }
-  }, [authenticated, ready, fetchUser]);
+    const setDir = (lng) => { document.documentElement.dir = ['ar', 'he', 'fa', 'ur'].includes(lng) ? 'rtl' : 'ltr'; };
+    setDir(i18n.language);
+    i18n.on('languageChanged', setDir);
+    return () => i18n.off('languageChanged', setDir);
+  }, []);
 
-  if (!ready || authenticating) {
+  // ponytail: check URL for password reset params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    const oobCode = params.get('oobCode');
+    if (mode === 'resetPassword' && oobCode) {
+      setResetOobCode(oobCode);
+      setScreen('resetPassword');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        try {
+          const t = await fbUser.getIdToken();
+          setToken(t);
+          const data = await apiFetch('/auth/verify', t, { method: 'POST' });
+          setUser(data);
+          setScreen('dashboard');
+        } catch (err) {
+          setAuthError(err.message);
+          setScreen('login');
+        }
+      } else {
+        setUser(null);
+        setToken('');
+        setScreen('login');
+      }
+      // ponytail: capture device fingerprint on login
+      if (fbUser) {
+        try {
+          const fp = await FingerprintJS.load();
+          const r = await fp.get();
+          const t = await fbUser.getIdToken();
+          apiFetch('/device/fingerprint', t, { method: 'POST', body: JSON.stringify({ hash: r.visitorId }) }).catch(() => {});
+        } catch {}
+      }
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  const handleGoogleLogin = async () => {
+    setAuthError('');
+    try { await signInWithPopup(auth, googleProvider); }
+    catch (err) { if (err.code !== 'auth/popup-closed-by-user') setAuthError(err.message); }
+  };
+
+  const handleEmailLogin = async (email, password) => {
+    setAuthError('');
+    try {
+      if (isSignUp) await createUserWithEmailAndPassword(auth, email, password);
+      else await signInWithEmailAndPassword(auth, email, password);
+    } catch (err) { setAuthError(err.message); }
+  };
+
+  const handleLogout = async () => {
+    try { await signOut(auth); }
+    catch (err) { setAuthError(err.message); }
+  };
+
+  const refreshUser = () => {
+    apiFetch('/auth/verify', token, { method: 'POST' }).then(d => { setUser(d); setScreen('dashboard'); }).catch(() => setScreen('dashboard'));
+  };
+
+  if (loading) {
     return (
       <div className="loading">
         <div className="loading-logo"><BitcoinIcon size={32} /></div>
-        <p className="loading-text">
-          {authenticating ? 'Syncing your account...' : 'Loading...'}
-        </p>
+        <p className="loading-text">{t('loading')}</p>
       </div>
     );
   }
 
   switch (screen) {
-    case 'login': return <LoginScreen error={authError} />;
-    case 'dashboard': return <DashboardScreen user={user} token={token} onSend={() => setScreen('send')} onDeposit={() => setScreen('deposit')} onHistory={() => setScreen('history')} onSettings={() => setScreen('settings')} />;
-    case 'deposit': return <DepositScreen token={token} onBack={() => { fetchedRef.current = false; fetchUser().then(() => setScreen('dashboard')); }} />;
-    case 'send': return <SendScreen token={token} user={user} onBack={() => { fetchedRef.current = false; fetchUser().then(() => setScreen('dashboard')); }} />;
+    case 'login': return <LoginScreen onGoogleLogin={handleGoogleLogin} onEmailLogin={handleEmailLogin} isSignUp={isSignUp} setIsSignUp={setIsSignUp} error={authError} onForgotPassword={() => setScreen('forgotPassword')} />;
+    case 'forgotPassword': return <ForgotPasswordScreen onBack={() => setScreen('login')} />;
+    case 'resetPassword': return <ResetPasswordScreen oobCode={resetOobCode} onBack={() => setScreen('login')} />;
+    case 'dashboard': return <DashboardScreen user={user} token={token} onSend={() => setScreen('send')} onDeposit={() => setScreen('deposit')} onHistory={() => setScreen('history')} onSettings={() => setScreen('settings')} onKyc={() => setScreen('kyc')} onLogout={handleLogout} />;
+    case 'kyc': return <KycScreen token={token} user={user} onBack={() => setScreen('settings')} onKycDone={refreshUser} />;
+    case 'deposit': return <DepositScreen token={token} onBack={refreshUser} />;
+    case 'send': return <SendScreen token={token} user={user} onBack={refreshUser} />;
     case 'history': return <HistoryScreen token={token} onBack={() => setScreen('dashboard')} />;
-    case 'settings': return <SettingsScreen user={user} onBack={() => setScreen('dashboard')} />;
-    default: return <LoginScreen error={authError} />;
+    case 'settings': return <SettingsScreen user={user} token={token} onBack={() => setScreen('dashboard')} onLogout={handleLogout} onKyc={() => setScreen('kyc')} onRefreshUser={refreshUser} />;
+    default: return <LoginScreen onGoogleLogin={handleGoogleLogin} onEmailLogin={handleEmailLogin} isSignUp={isSignUp} setIsSignUp={setIsSignUp} error={authError} onForgotPassword={() => setScreen('forgotPassword')} />;
   }
 }

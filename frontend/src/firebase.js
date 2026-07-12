@@ -1,13 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
+// ponytail: Firebase config from env vars — resolves GitHub secret scanning alert
 const firebaseConfig = {
-  apiKey: "AIzaSyC1HMoF_x77d96abxnb2z81JIyAjht5cr8",
-  authDomain: "bank-17d30.firebaseapp.com",
-  projectId: "bank-17d30",
-  storageBucket: "bank-17d30.firebasestorage.app",
-  messagingSenderId: "274927942892",
-  appId: "1:274927942892:web:d8c2567709c2e166f779c9"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);

@@ -24,6 +24,7 @@ router.post('/totp/setup', auth, async (req, res) => {
     // ponytail: only return QR data URL, never the raw secret
     res.json({ qrDataUrl });
   } catch (e) {
+    console.error('totp/setup error:', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -47,6 +48,7 @@ router.post('/totp/verify-enable', auth, async (req, res) => {
     });
     res.json({ status: 'enabled', backupCodes: codes });
   } catch (e) {
+    console.error('totp/verify-enable error:', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -90,6 +92,7 @@ router.post('/totp/verify', auth, async (req, res) => {
     store.delete(`totp:${user._id}`);
     res.json({ status: 'verified', expiresIn: 3600, totpToken: signTotpSession(req.userId) });
   } catch (e) {
+    console.error('totp/verify error:', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -115,6 +118,7 @@ router.post('/totp/disable', auth, async (req, res) => {
     });
     res.json({ status: 'disabled' });
   } catch (e) {
+    console.error('totp/disable error:', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -125,6 +129,7 @@ router.get('/totp/status', auth, async (req, res) => {
     const backupCodesRemaining = (user.backupCodes || []).filter(c => !c.used).length;
     res.json({ enabled: !!user.totpEnabled, hasSecret: !!user.totpSecret, backupCodesRemaining });
   } catch (e) {
+    console.error('totp/status error:', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -151,6 +156,7 @@ router.post('/totp/backup-codes', auth, async (req, res) => {
     });
     res.json({ backupCodes: codes });
   } catch (e) {
+    console.error('totp/backup-codes error:', e);
     res.status(500).json({ error: e.message });
   }
 });

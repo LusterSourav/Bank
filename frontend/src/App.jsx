@@ -308,14 +308,14 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
   useEffect(() => {
     const handleVisibility = () => {
       const timer = localStorage.getItem('autoLockTimer');
-      if (document.visibilityState === 'visible' && timer && timer !== 'off' && user.webauthnCredentials?.length) {
+      if (document.visibilityState === 'visible' && timer && timer !== 'off' && (user.webauthnCount || 0) > 0) {
         setAutoLocked(true);
         setWebauthnSession(null);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [user.webauthnCredentials]);
+  }, [user.webauthnCount]);
 
   // persist WebAuthn session to localStorage so it survives page refresh
   const verifyWebauthnUnlock = async () => {
@@ -334,14 +334,14 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
   };
 
   const revealBalance = () => {
-    if (user.webauthnCredentials?.length && !webauthnSession) return;
+    if ((user.webauthnCount || 0) > 0 && !webauthnSession) return;
     if (!privacyPin) return;
     setPrivacyRevealed(true);
     if (privacyTimerRef.current) clearTimeout(privacyTimerRef.current);
     privacyTimerRef.current = setTimeout(() => setPrivacyRevealed(false), 3000);
   };
 
-  const balanceVisible = showBalance && (!privacyPin || privacyRevealed) && (!user.webauthnCredentials?.length || webauthnSession);
+  const balanceVisible = showBalance && (!privacyPin || privacyRevealed) && (!(user.webauthnCount || 0) > 0 || webauthnSession);
 
   const totalSent = recentTxs.filter(t => t.type === 'send').reduce((sum, t) => sum + t.amount, 0);
   const totalReceived = recentTxs.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0);
@@ -392,7 +392,7 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
       {/* Balance card */}
       <div className="balance-card">
         <p className="balance-label">{t('yourBalance')}</p>
-        {(user.webauthnCredentials?.length && (!webauthnSession || autoLocked)) ? (
+        {((user.webauthnCount || 0) > 0 && (!webauthnSession || autoLocked)) ? (
           <div className="totp-unlock">
             {autoLocked && <p className="totp-unlock-desc" style={{ color: 'var(--warning)' }}><LockIcon size={14} /> {t('screenLocked')} — {t('screenLockedDesc')}</p>}
             <p className="totp-unlock-desc">{t('biometricUnlockDesc')}</p>

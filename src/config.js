@@ -44,6 +44,8 @@ export default {
 (() => {
   const encKey = process.env.TOTP_ENCRYPTION_KEY || '';
   const sessionKey = process.env.TOTP_SESSION_SECRET || '';
-  if (encKey && encKey.length !== 64) throw new Error('TOTP_ENCRYPTION_KEY must be 64 hex chars (32 bytes)');
-  if (sessionKey && sessionKey.length < 32) throw new Error('TOTP_SESSION_SECRET must be at least 32 chars');
+  if (!encKey) throw new Error('TOTP_ENCRYPTION_KEY env var is required (64 hex chars, 32 bytes)');
+  if (encKey.length !== 64) throw new Error('TOTP_ENCRYPTION_KEY must be 64 hex chars (32 bytes)');
+  if (!sessionKey) throw new Error('TOTP_SESSION_SECRET env var is required (min 32 chars)');
+  if (sessionKey.length < 32) throw new Error('TOTP_SESSION_SECRET must be at least 32 chars');
 })();

@@ -20,8 +20,10 @@ export function generateSecret(userId) {
   return { secret, url: totp.toString() };
 }
 
+// ponytail: SVG avoids node-canvas dependency, works in Vercel serverless
 export async function generateQrDataUrl(url) {
-  return QRCode.toDataURL(url, { width: 240, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+  const svg = await QRCode.toString(url, { type: 'svg', width: 240, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 }
 
 export function verifyToken(secret, token) {

@@ -6,7 +6,9 @@ export function signTotpSession(userId) {
   return jwt.sign({ sub: userId, totp: true }, config.totpSessionSecret, { expiresIn: '1h' });
 }
 export function verifyTotpSession(token) {
-  return jwt.verify(token, config.totpSessionSecret);
+  const payload = jwt.verify(token, config.totpSessionSecret);
+  if (!payload.totp) throw new Error('Not a TOTP session');
+  return payload;
 }
 
 // WebAuthn session — sent via X-Webauthn-Token, used for dashboard biometric gate
@@ -14,5 +16,7 @@ export function signWebauthnSession(userId) {
   return jwt.sign({ sub: userId, webauthn: true }, config.totpSessionSecret, { expiresIn: '1h' });
 }
 export function verifyWebauthnSession(token) {
-  return jwt.verify(token, config.totpSessionSecret);
+  const payload = jwt.verify(token, config.totpSessionSecret);
+  if (!payload.webauthn) throw new Error('Not a WebAuthn session');
+  return payload;
 }

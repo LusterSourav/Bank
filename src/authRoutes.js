@@ -1,22 +1,27 @@
 import { Router } from 'express';
 import { auth } from './middleware.js';
 import { User } from './models.js';
-import { generateSecret, generateQrDataUrl, verifyToken } from './totp.js';
+import { generateSecret, generateQrDataUrl, verifyToken, generateBackupCodes, verifyBackupCode } from './totp.js';
+import { encrypt, decrypt } from './encryption.js';
 import { createRegistrationOptions, verifyRegistration, createAuthenticationOptions, verifyAuthentication, getRpId, getOrigin } from './webauthn.js';
 import store from './fraud/store.js';
 
 const router = Router();
+const isValidToken = (t) => /^\d{6}$/.test(t);
 
 // ─── TOTP ─────────────────────────────────────────────────────────
+// All secrets are AES-256-GCM encrypted at rest. Backup codes are bcrypt-hashed.
+// Rate-limited to 5 attempts per 15 min per user.
 
 router.post('/totp/setup', auth, async (req, res) => {
   try {
     const user = await User.findOne({ firebaseUid: req.userId });
     const { secret, url } = generateSecret(user._id.toString());
     const qrDataUrl = await generateQrDataUrl(url);
-    // ponytail: store temp until verified, then mark enabled
-    await User.updateOne({ firebaseUid: req.userId }, { $set: { totpSecret: secret, totpEnabled: false } });
-    res.json({ qrDataUrl, secret });
+    // encrypt the secret before storing — never store TOTP secrets as plaintext
+    await User.updateOne({ firebaseUid: req.userId }, { $set: { totpSecret: encrypt(secret), totpEnabled: false } });
+    // ponytail: only return QR data URL, never the raw secret
+    res.json({ qrDataUrl });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -25,17 +30,21 @@ router.post('/totp/setup', auth, async (req, res) => {
 router.post('/totp/verify-enable', auth, async (req, res) => {
   try {
     const { token } = req.body;
-    if (!token) return res.status(400).json({ error: 'Token required' });
+    if (!token || !isValidToken(token)) return res.status(400).json({ error: 'Valid 6-digit token required' });
 
     const user = await User.findOne({ firebaseUid: req.userId });
     if (!user.totpSecret) return res.status(400).json({ error: 'TOTP not set up' });
 
-    if (!verifyToken(user.totpSecret, token)) {
+    const secret = decrypt(user.totpSecret);
+    if (!verifyToken(secret, token)) {
       return res.status(400).json({ error: 'Invalid token' });
     }
 
-    await User.updateOne({ firebaseUid: req.userId }, { $set: { totpEnabled: true } });
-    res.json({ status: 'enabled' });
+    const { codes, hashes } = await generateBackupCodes();
+    await User.updateOne({ firebaseUid: req.userId }, {
+      $set: { totpEnabled: true, backupCodes: hashes.map(h => ({ hash: h })) },
+    });
+    res.json({ status: 'enabled', backupCodes: codes });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -43,8 +52,10 @@ router.post('/totp/verify-enable', auth, async (req, res) => {
 
 router.post('/totp/verify', auth, async (req, res) => {
   try {
-    const { token } = req.body;
-    if (!token) return res.status(400).json({ error: 'Token required' });
+    const { token, backupCode } = req.body;
+    // accepts either a 6-digit TOTP token or a backup code (XXXX-XXXX)
+    if (!token && !backupCode) return res.status(400).json({ error: 'Token or backup code required' });
+    if (token && !isValidToken(token)) return res.status(400).json({ error: 'Valid 6-digit token required' });
 
     const user = await User.findOne({ firebaseUid: req.userId });
     if (!user.totpEnabled || !user.totpSecret) {
@@ -57,8 +68,22 @@ router.post('/totp/verify', auth, async (req, res) => {
       return res.status(429).json({ error: 'Too many attempts. Try again later.' });
     }
 
-    if (!verifyToken(user.totpSecret, token)) {
-      return res.status(400).json({ error: 'Invalid token' });
+    let verified = false;
+    if (backupCode) {
+      verified = await verifyBackupCode(user, backupCode);
+      if (verified) {
+        await User.updateOne(
+          { firebaseUid: req.userId, 'backupCodes.hash': { $in: user.backupCodes.filter(c => !c.used).map(c => c.hash) } },
+          { $set: { 'backupCodes.$.used': true, 'backupCodes.$.usedAt': new Date() } },
+        );
+      }
+    } else {
+      const secret = decrypt(user.totpSecret);
+      verified = verifyToken(secret, token);
+    }
+
+    if (!verified) {
+      return res.status(400).json({ error: backupCode ? 'Invalid backup code' : 'Invalid token' });
     }
 
     store.delete(`totp:${user._id}`);
@@ -71,16 +96,20 @@ router.post('/totp/verify', auth, async (req, res) => {
 router.post('/totp/disable', auth, async (req, res) => {
   try {
     const { token } = req.body;
+    if (!token || !isValidToken(token)) return res.status(400).json({ error: 'Valid 6-digit token required' });
+
     const user = await User.findOne({ firebaseUid: req.userId });
 
     if (user.totpEnabled && user.totpSecret) {
-      if (!token || !verifyToken(user.totpSecret, token)) {
+      const secret = decrypt(user.totpSecret);
+      if (!verifyToken(secret, token)) {
         return res.status(400).json({ error: 'Valid token required to disable TOTP' });
       }
     }
 
+    // also clears backup codes since TOTP is being fully disabled
     await User.updateOne({ firebaseUid: req.userId }, {
-      $unset: { totpSecret: '' },
+      $unset: { totpSecret: '', backupCodes: '' },
       $set: { totpEnabled: false },
     });
     res.json({ status: 'disabled' });
@@ -92,7 +121,34 @@ router.post('/totp/disable', auth, async (req, res) => {
 router.get('/totp/status', auth, async (req, res) => {
   try {
     const user = await User.findOne({ firebaseUid: req.userId });
-    res.json({ enabled: !!user.totpEnabled, hasSecret: !!user.totpSecret });
+    const backupCodesRemaining = (user.backupCodes || []).filter(c => !c.used).length;
+    res.json({ enabled: !!user.totpEnabled, hasSecret: !!user.totpSecret, backupCodesRemaining });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/totp/backup-codes', auth, async (req, res) => {
+  // requires valid TOTP token — invalidates all existing backup codes and generates new ones
+  try {
+    const { token } = req.body;
+    if (!token || !isValidToken(token)) return res.status(400).json({ error: 'Valid 6-digit token required' });
+
+    const user = await User.findOne({ firebaseUid: req.userId });
+    if (!user.totpEnabled || !user.totpSecret) {
+      return res.status(400).json({ error: 'TOTP not enabled' });
+    }
+
+    const secret = decrypt(user.totpSecret);
+    if (!verifyToken(secret, token)) {
+      return res.status(400).json({ error: 'Invalid token' });
+    }
+
+    const { codes, hashes } = await generateBackupCodes();
+    await User.updateOne({ firebaseUid: req.userId }, {
+      $set: { backupCodes: hashes.map(h => ({ hash: h })) },
+    });
+    res.json({ backupCodes: codes });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -45,16 +45,30 @@ const API = import.meta.env.VITE_API_URL;
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 async function apiFetch(path, token, opts = {}) {
+  // auto-attach TOTP session token from localStorage
+  let totpToken = null;
+  try {
+    const s = JSON.parse(localStorage.getItem('totpSession') || '{}');
+    if (s.totpToken && s.expiresAt > Date.now()) totpToken = s.totpToken;
+  } catch {}
   const res = await fetch(`${API}${path}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(totpToken ? { 'X-Totp-Token': totpToken } : {}),
       ...opts.headers,
     },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  if (!res.ok) {
+  // 403 from TOTP enforcement → clear session so frontend shows unlock gate
+  if (res.status === 403 && data.error === 'TOTP session expired') {
+    localStorage.removeItem('totpSession');
+    window.dispatchEvent(new Event('totpSessionExpired'));
+  }
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
   return data;
 }
 
@@ -274,6 +288,13 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
     }
   }, [token]);
 
+  // clear React state when totpSession is invalidated server-side (403)
+  useEffect(() => {
+    const handleExpired = () => { setTotpSession(null); };
+    window.addEventListener('totpSessionExpired', handleExpired);
+    return () => window.removeEventListener('totpSessionExpired', handleExpired);
+  }, []);
+
   // ponytail: auto-lock on visibility change
   useEffect(() => {
     const handleVisibility = () => {
@@ -293,8 +314,8 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
       const body = useBackupCode
         ? { backupCode: totpUnlockCode }
         : { token: totpUnlockCode };
-      await apiFetch('/totp/verify', token, { method: 'POST', body: JSON.stringify(body) });
-      const session = { verified: true, expiresAt: Date.now() + 3600000 };
+      const d = await apiFetch('/totp/verify', token, { method: 'POST', body: JSON.stringify(body) });
+      const session = { totpToken: d.totpToken, verified: true, expiresAt: Date.now() + 3600000 };
       setTotpSession(session);
       localStorage.setItem('totpSession', JSON.stringify(session));
       setAutoLocked(false);

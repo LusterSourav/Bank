@@ -3,7 +3,7 @@ import { auth } from './middleware.js';
 import { User } from './models.js';
 import { generateSecret, generateQrDataUrl, verifyToken, generateBackupCodes, verifyBackupCode } from './totp.js';
 import { encrypt, decrypt } from './encryption.js';
-import { signTotpSession } from './totpSession.js';
+import { signTotpSession, signWebauthnSession } from './totpSession.js';
 import { createRegistrationOptions, verifyRegistration, createAuthenticationOptions, verifyAuthentication, getRpId, getOrigin } from './webauthn.js';
 import store from './fraud/store.js';
 
@@ -267,7 +267,7 @@ router.post('/webauthn/authenticate/complete', auth, async (req, res) => {
     );
     await User.updateOne({ firebaseUid: req.userId }, { $unset: { webauthnChallenge: '' } });
 
-    res.json({ status: 'authenticated' });
+    res.json({ status: 'authenticated', webauthnToken: signWebauthnSession(req.userId) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

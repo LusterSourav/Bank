@@ -1097,7 +1097,7 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
 
   const startTotpSetup = async () => {
     setTotpLoading(true); setTotpErr('');
-    try { const d = await apiFetch('/totp/setup', token); setTotpQr(d.qrDataUrl); setTotpStep('verify'); setTotpCode(''); } catch (e) { setTotpErr(e.message); }
+    try { const d = await apiFetch('/totp/setup', token, { method: 'POST' }); setTotpQr(d.qrDataUrl); setTotpStep('verify'); setTotpCode(''); } catch (e) { setTotpErr(e.message); }
     setTotpLoading(false);
   };
   const verifyTotpEnable = async () => {

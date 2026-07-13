@@ -34,4 +34,6 @@ export default {
     accessKey: process.env.EKO_ACCESS_KEY || '',
     initiatorId: process.env.EKO_INITIATOR_ID || '',
   },
+  // AES-256-GCM key for TOTP secrets at rest — 32 bytes as 64 hex chars
+  totpEncryptionKey: process.env.TOTP_ENCRYPTION_KEY || '',
 };

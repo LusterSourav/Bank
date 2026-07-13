@@ -1608,6 +1608,21 @@ body {
   padding: var(--sp-4);
 }
 
+.backup-codes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-8);
+}
+.backup-code {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-sm);
+  background: var(--bg-secondary, rgba(255,255,255,0.05));
+  padding: var(--sp-6) var(--sp-8);
+  border-radius: var(--r-sm);
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
 .webauthn-list {
   display: flex;
   flex-direction: column;

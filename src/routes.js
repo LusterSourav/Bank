@@ -34,11 +34,13 @@ async function getTodayTotal(userId, type) {
 
 router.post('/auth/verify', auth, async (req, res) => {
   try {
-    const user = await User.findOneAndUpdate(
-      { firebaseUid: req.userId },
-      { $set: { lastLogin: new Date() }, $setOnInsert: { firebaseUid: req.userId, email: req.userEmail } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    // ponytail: explicit find/create avoids Mongoose upsert + nested defaults bug
+    let user = await User.findOne({ firebaseUid: req.userId });
+    if (!user) {
+      user = await User.create({ firebaseUid: req.userId, email: req.userEmail });
+    }
+    user.lastLogin = new Date();
+    await user.save();
     res.json({
       userId: user.id,
       email: user.email,
@@ -59,8 +61,8 @@ router.post('/auth/verify', auth, async (req, res) => {
       sendLimit: user.sendLimit || 100000,
     });
   } catch (e) {
-    console.error('auth/verify error:', e.message);
-    res.status(500).json({ error: 'verify failed' });
+    console.error('auth/verify error:', e);
+    res.status(500).json({ error: e.message || 'verify failed' });
   }
 });
 

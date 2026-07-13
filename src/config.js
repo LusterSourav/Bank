@@ -25,4 +25,13 @@ export default {
     whatsAppFrom: process.env.TWILIO_WHATSAPP_FROM || '',
     templateSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID || '',
   },
+  sandbox: {
+    apiKey: process.env.SANDBOX_API_KEY || '',
+    apiSecret: process.env.SANDBOX_API_SECRET || '',
+  },
+  eko: {
+    developerKey: process.env.EKO_DEVELOPER_KEY || '',
+    accessKey: process.env.EKO_ACCESS_KEY || '',
+    initiatorId: process.env.EKO_INITIATOR_ID || '',
+  },
 };

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import Stripe from 'stripe';
 import Razorpay from 'razorpay';
 import admin from 'firebase-admin';
-import { auth } from './middleware.js';
+import { auth, totpRequired } from './middleware.js';
 import { User, Transaction, Beneficiary } from './models.js';
 import config from './config.js';
 import { sendEmailNotification, sendWhatsAppNotification } from './notifications.js';
@@ -66,7 +66,7 @@ router.post('/auth/verify', auth, async (req, res) => {
   }
 });
 
-router.put('/auth/send-limit', auth, async (req, res) => {
+router.put('/auth/send-limit', auth, totpRequired, async (req, res) => {
   try {
     const { sendLimit } = req.body;
     if (!sendLimit || sendLimit < 500 || sendLimit > 500000) {
@@ -80,7 +80,7 @@ router.put('/auth/send-limit', auth, async (req, res) => {
   }
 });
 
-router.put('/auth/profile', auth, async (req, res) => {
+router.put('/auth/profile', auth, totpRequired, async (req, res) => {
   try {
     const { name } = req.body;
     if (!name || name.length < 1) return res.status(400).json({ error: 'Name required' });
@@ -92,7 +92,7 @@ router.put('/auth/profile', auth, async (req, res) => {
   }
 });
 
-router.post('/auth/delete-account', auth, async (req, res) => {
+router.post('/auth/delete-account', auth, totpRequired, async (req, res) => {
   try {
     const user = await User.findOne({ firebaseUid: req.userId });
     if (!user) return res.status(404).json({ error: 'not found' });
@@ -195,7 +195,7 @@ router.get('/order-status/:orderId', auth, async (req, res) => {
   res.json({ status: tx.status });
 });
 
-router.post('/send', auth, async (req, res) => {
+router.post('/send', auth, totpRequired, async (req, res) => {
   const { amount, recipient, currency = 'inr' } = req.body;
   if (!amount || amount <= 0 || !recipient) return res.status(400).json({ error: 'missing amount or recipient' });
   if (!checkRate(`send:${req.userId}`, 10)) return res.status(429).json({ error: 'too many requests' });

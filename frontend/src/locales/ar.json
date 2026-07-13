@@ -82,6 +82,8 @@
   "faq3A": "اضغط على \"إيداع\" في لوحة التحكم.",
   "faq4Q": "هل أموالي آمنة؟",
   "faq4A": "نعم. جميع البيانات مشفرة بتقنية AES 256 بت.",
+  "faq5Q": "ما هو المصادقة الثنائية (2FA)؟",
+  "faq5A": "تضيف المصادقة الثنائية طبقة أمان إضافية إلى حسابك. عند التمكين، ستحتاج إلى إدخال رمز مكون من 6 أرقام من تطبيق المصادقة (مثل Google Authenticator أو Microsoft Authenticator) بالإضافة إلى كلمة المرور الخاصة بك. نقدم أيضًا أكواد احتياطية يمكنك حفظها — كل كود يعمل مرة واحدة إذا فقدت الوصول إلى تطبيق المصادقة الخاص بك.",
   "about": "حول",
   "aboutVersion": "الإصدار 1.0.0 — مبني بمعايير morningstarxcdcode",
   "logOut": "تسجيل الخروج",
@@ -151,5 +153,12 @@
   "deleteAccountConfirm": "This action cannot be undone. All data will be permanently deleted.",
   "deleteAccountBtn": "Delete My Account",
   "screenLocked": "Screen Locked",
-  "screenLockedDesc": "Enter your authenticator code to continue"
+  "screenLockedDesc": "Enter your authenticator code to continue",
+  "backupCodesTitle": "Backup Codes",
+  "backupCodesWarning": "Save these codes somewhere safe. Each code can only be used once. You won't be able to see them again.",
+  "backupCodesSaved": "I've saved my codes",
+  "copyAll": "Copy All",
+  "download": "Download",
+  "useBackupCode": "Use a backup code instead",
+  "backupCodeLabel": "Enter one of your backup codes"
 }

@@ -82,6 +82,8 @@
   "faq3A": "Appuyez sur \"Déposer\" sur votre tableau de bord.",
   "faq4Q": "Mon argent est-il en sécurité ?",
   "faq4A": "Oui. Toutes les données sont chiffrées avec AES 256 bits.",
+  "faq5Q": "Qu'est-ce que l'Authentification à Deux Facteurs (2FA) ?",
+  "faq5A": "L'Authentification à Deux Facteurs ajoute une couche de sécurité supplémentaire à votre compte. Lorsqu'elle est activée, vous devrez entrer un code à 6 chiffres d'une application d'authentification (comme Google Authenticator ou Microsoft Authenticator) en plus de votre mot de passe. Nous fournissons également des codes de secours que vous pouvez enregistrer — chaque code fonctionne une fois si vous perdez l'accès à votre application d'authentification.",
   "about": "À propos",
   "aboutVersion": "Version 1.0.0 — Construit avec les normes morningstarxcdcode",
   "logOut": "Se déconnecter",
@@ -151,5 +153,12 @@
   "deleteAccountConfirm": "This action cannot be undone. All data will be permanently deleted.",
   "deleteAccountBtn": "Delete My Account",
   "screenLocked": "Screen Locked",
-  "screenLockedDesc": "Enter your authenticator code to continue"
+  "screenLockedDesc": "Enter your authenticator code to continue",
+  "backupCodesTitle": "Backup Codes",
+  "backupCodesWarning": "Save these codes somewhere safe. Each code can only be used once. You won't be able to see them again.",
+  "backupCodesSaved": "I've saved my codes",
+  "copyAll": "Copy All",
+  "download": "Download",
+  "useBackupCode": "Use a backup code instead",
+  "backupCodeLabel": "Enter one of your backup codes"
 }

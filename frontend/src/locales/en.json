@@ -84,6 +84,8 @@
   "faq3A": "Tap \"Deposit\" on your dashboard. You can add funds via debit/credit card or bank transfer.",
   "faq4Q": "Is my money safe?",
   "faq4A": "Yes. All data is encrypted with 256-bit AES. We use Firebase Authentication and follow Bitcoin Design security standards.",
+  "faq5Q": "What is Two-Factor Authentication (2FA)?",
+  "faq5A": "Two-Factor Authentication adds an extra layer of security to your account. When enabled, you'll need to enter a 6-digit code from an authenticator app (like Google Authenticator or Microsoft Authenticator) in addition to your password. We also provide backup codes you can save — each code works once if you lose access to your authenticator app.",
   "about": "About",
   "aboutVersion": "Version 2.0.0 — Built with morningstarxcdcode standards",
   "logOut": "Log Out",
@@ -204,5 +206,12 @@
   "deleteAccountConfirm": "This action cannot be undone. All data will be permanently deleted.",
   "deleteAccountBtn": "Delete My Account",
   "screenLocked": "Screen Locked",
-  "screenLockedDesc": "Enter your authenticator code to continue"
+  "screenLockedDesc": "Enter your authenticator code to continue",
+  "backupCodesTitle": "Backup Codes",
+  "backupCodesWarning": "Save these codes somewhere safe. Each code can only be used once. You won't be able to see them again.",
+  "backupCodesSaved": "I've saved my codes",
+  "copyAll": "Copy All",
+  "download": "Download",
+  "useBackupCode": "Use a backup code instead",
+  "backupCodeLabel": "Enter one of your backup codes"
 }

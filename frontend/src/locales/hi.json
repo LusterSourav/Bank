@@ -82,6 +82,8 @@
   "faq3A": "अपने डैशबोर्ड पर \"जमा करें\" पर टैप करें।",
   "faq4Q": "क्या मेरा पैसा सुरक्षित है?",
   "faq4A": "हाँ। सभी डेटा 256-bit AES से एन्क्रिप्टेड है।",
+  "faq5Q": "दो-कारक प्रमाणीकरण (2FA) क्या है?",
+  "faq5A": "दो-कारक प्रमाणीकरण आपके खाते में एक अतिरिक्त सुरक्षा परत जोड़ता है। जब सक्षम हो, तो आपको अपने पासवर्ड के अलावा एक प्रमाणीकरण ऐप (जैसे Google Authenticator या Microsoft Authenticator) से 6-अंकों का कोड दर्ज करना होगा। हम बैकअप कोड भी प्रदान करते हैं जिन्हें आप सहेज सकते हैं — यदि आप अपने प्रमाणीकरण ऐप तक पहुंच खो देते हैं तो प्रत्येक कोड एक बार काम करता है।",
   "about": "बारे में",
   "aboutVersion": "संस्करण 1.0.0 — मॉर्निंगस्टार मानकों के साथ निर्मित",
   "logOut": "लॉग आउट",
@@ -151,5 +153,12 @@
   "deleteAccountConfirm": "This action cannot be undone. All data will be permanently deleted.",
   "deleteAccountBtn": "Delete My Account",
   "screenLocked": "Screen Locked",
-  "screenLockedDesc": "Enter your authenticator code to continue"
+  "screenLockedDesc": "Enter your authenticator code to continue",
+  "backupCodesTitle": "Backup Codes",
+  "backupCodesWarning": "Save these codes somewhere safe. Each code can only be used once. You won't be able to see them again.",
+  "backupCodesSaved": "I've saved my codes",
+  "copyAll": "Copy All",
+  "download": "Download",
+  "useBackupCode": "Use a backup code instead",
+  "backupCodeLabel": "Enter one of your backup codes"
 }

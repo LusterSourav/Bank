@@ -82,6 +82,8 @@
   "faq3A": "Toca \"Depositar\" en tu panel. Puedes añadir fondos con tarjeta o transferencia bancaria.",
   "faq4Q": "¿Mi dinero está seguro?",
   "faq4A": "Sí. Todos los datos están encriptados con AES de 256 bits.",
+  "faq5Q": "¿Qué es la Autenticación de Dos Factores (2FA)?",
+  "faq5A": "La Autenticación de Dos Factores añade una capa extra de seguridad a tu cuenta. Cuando está activada, necesitarás ingresar un código de 6 dígitos de una aplicación de autenticación (como Google Authenticator o Microsoft Authenticator) además de tu contraseña. También proporcionamos códices de respaldo que puedes guardar — cada código funciona una vez si pierdes acceso a tu aplicación de autenticación.",
   "about": "Acerca de",
   "aboutVersion": "Versión 1.0.0 — Construido con estándares morningstarxcdcode",
   "logOut": "Cerrar sesión",
@@ -151,5 +153,12 @@
   "deleteAccountConfirm": "This action cannot be undone. All data will be permanently deleted.",
   "deleteAccountBtn": "Delete My Account",
   "screenLocked": "Screen Locked",
-  "screenLockedDesc": "Enter your authenticator code to continue"
+  "screenLockedDesc": "Enter your authenticator code to continue",
+  "backupCodesTitle": "Backup Codes",
+  "backupCodesWarning": "Save these codes somewhere safe. Each code can only be used once. You won't be able to see them again.",
+  "backupCodesSaved": "I've saved my codes",
+  "copyAll": "Copy All",
+  "download": "Download",
+  "useBackupCode": "Use a backup code instead",
+  "backupCodeLabel": "Enter one of your backup codes"
 }

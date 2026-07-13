@@ -243,10 +243,16 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
   const [showLogout, setShowLogout] = useState(false);
   const [privacyRevealed, setPrivacyRevealed] = useState(false);
   const privacyTimerRef = useRef(null);
-  const [totpSession, setTotpSession] = useState(null);
+  // ponytail: restore TOTP session from localStorage with 1hr expiry — survives page refresh
+  const [totpSession, setTotpSession] = useState(() => {
+    const saved = localStorage.getItem('totpSession');
+    if (saved) { try { const s = JSON.parse(saved); if (s.expiresAt > Date.now()) return s; } catch {} }
+    return null;
+  });
   const [totpUnlockCode, setTotpUnlockCode] = useState('');
   const [totpUnlockErr, setTotpUnlockErr] = useState('');
   const [autoLocked, setAutoLocked] = useState(false);
+  const [useBackupCode, setUseBackupCode] = useState(false); // toggle between TOTP input and backup code input
 
   const darkMode = localStorage.getItem('darkMode') !== 'false';
   const showBalance = localStorage.getItem('showBalance') !== 'false';
@@ -281,13 +287,20 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [user.totpEnabled]);
 
+  // persist TOTP session to localStorage so it survives page refresh
   const verifyTotpUnlock = async () => {
     try {
-      await apiFetch('/totp/verify', token, { method: 'POST', body: JSON.stringify({ token: totpUnlockCode }) });
-      setTotpSession({ verified: true });
+      const body = useBackupCode
+        ? { backupCode: totpUnlockCode }
+        : { token: totpUnlockCode };
+      await apiFetch('/totp/verify', token, { method: 'POST', body: JSON.stringify(body) });
+      const session = { verified: true, expiresAt: Date.now() + 3600000 };
+      setTotpSession(session);
+      localStorage.setItem('totpSession', JSON.stringify(session));
       setAutoLocked(false);
       setTotpUnlockCode('');
       setTotpUnlockErr('');
+      setUseBackupCode(false);
     } catch (e) {
       setTotpUnlockErr(e.message);
     }
@@ -355,11 +368,21 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
         {(user.totpEnabled && (!totpSession || autoLocked)) ? (
           <div className="totp-unlock">
             {autoLocked && <p className="totp-unlock-desc" style={{ color: 'var(--warning)' }}><LockIcon size={14} /> {t('screenLocked')} — {t('screenLockedDesc')}</p>}
-            {!autoLocked && <p className="totp-unlock-desc">{t('totpUnlockDesc')}</p>}
-            <input className="settings-input otp-input" type="text" maxLength={6} value={totpUnlockCode} onChange={e => setTotpUnlockCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" />
+            {!autoLocked && <p className="totp-unlock-desc">{useBackupCode ? t('backupCodeLabel') : t('totpUnlockDesc')}</p>}
+            <input
+              className="settings-input otp-input"
+              type="text"
+              maxLength={useBackupCode ? 9 : 6}
+              value={totpUnlockCode}
+              onChange={e => setTotpUnlockCode(useBackupCode ? e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') : e.target.value.replace(/\D/g, ''))}
+              placeholder={useBackupCode ? 'XXXX-XXXX' : '000000'}
+            />
             {totpUnlockErr && <p className="error-text">{totpUnlockErr}</p>}
-            <button className="btn-primary" onClick={verifyTotpUnlock} disabled={totpUnlockCode.length !== 6}>
+            <button className="btn-primary" onClick={verifyTotpUnlock} disabled={useBackupCode ? totpUnlockCode.length < 9 : totpUnlockCode.length !== 6}>
               {t('unlockBalance')}
+            </button>
+            <button className="btn-link" onClick={() => { setUseBackupCode(!useBackupCode); setTotpUnlockCode(''); setTotpUnlockErr(''); }}>
+              {useBackupCode ? t('totpUnlockDesc') : t('useBackupCode')}
             </button>
           </div>
         ) : (
@@ -1041,6 +1064,8 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
   const [totpStep, setTotpStep] = useState('idle');
   const [totpErr, setTotpErr] = useState('');
   const [totpLoading, setTotpLoading] = useState(false);
+  const [backupCodes, setBackupCodes] = useState([]);
+  const [showBackupModal, setShowBackupModal] = useState(false);
   const [webauthnCreds, setWebauthnCreds] = useState([]);
   const [waLoading, setWaLoading] = useState(false);
 
@@ -1077,7 +1102,12 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
   };
   const verifyTotpEnable = async () => {
     setTotpLoading(true); setTotpErr('');
-    try { await apiFetch('/totp/verify-enable', token, { method: 'POST', body: JSON.stringify({ token: totpCode }) }); setTotpStep('idle'); setTotpQr(''); onRefreshUser(); } catch (e) { setTotpErr(e.message); }
+    try {
+      const d = await apiFetch('/totp/verify-enable', token, { method: 'POST', body: JSON.stringify({ token: totpCode }) });
+      setTotpStep('idle'); setTotpQr(''); setTotpCode('');
+      if (d.backupCodes) { setBackupCodes(d.backupCodes); setShowBackupModal(true); }
+      onRefreshUser();
+    } catch (e) { setTotpErr(e.message); }
     setTotpLoading(false);
   };
   const disableTotp = async () => {
@@ -1114,6 +1144,7 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
     { qKey: 'faq2Q', aKey: 'faq2A' },
     { qKey: 'faq3Q', aKey: 'faq3A' },
     { qKey: 'faq4Q', aKey: 'faq4A' },
+    { qKey: 'faq5Q', aKey: 'faq5A' },
   ];
 
   const fmtIST = (d) => new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -1293,6 +1324,36 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
           )}
         </div>
       </div>
+
+      {/* Backup Codes Modal */}
+      {showBackupModal && (
+        <div className="settings-section">
+          <div className="settings-card" style={{ border: '1px solid var(--warning)' }}>
+            <h4 className="settings-section-title" style={{ color: 'var(--warning)' }}>{t('backupCodesTitle')}</h4>
+            <p className="settings-row-value" style={{ marginBottom: 'var(--sp-8)' }}>{t('backupCodesWarning')}</p>
+            <div className="backup-codes-grid">
+              {backupCodes.map((code, i) => (
+                <span key={i} className="backup-code">{code}</span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--sp-8)', marginTop: 'var(--sp-12)' }}>
+              <button className="btn-secondary" onClick={() => { navigator.clipboard.writeText(backupCodes.join('\n')); }}>
+                {t('copyAll')}
+              </button>
+              <button className="btn-secondary" onClick={() => {
+                const blob = new Blob([backupCodes.join('\n')], { type: 'text/plain' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                a.download = 'sendly-backup-codes.txt'; a.click();
+              }}>
+                {t('download')}
+              </button>
+            </div>
+            <button className="btn-primary" style={{ marginTop: 'var(--sp-12)' }} onClick={() => { setShowBackupModal(false); setBackupCodes([]); }}>
+              {t('backupCodesSaved')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Biometric */}
       <div className="settings-section">

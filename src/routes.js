@@ -34,10 +34,11 @@ async function getTodayTotal(userId, type) {
 
 router.post('/auth/verify', auth, async (req, res) => {
   try {
-    let user = await User.findOne({ firebaseUid: req.userId });
-    if (!user) user = await User.create({ firebaseUid: req.userId, email: req.userEmail });
-    user.lastLogin = new Date();
-    await user.save();
+    const user = await User.findOneAndUpdate(
+      { firebaseUid: req.userId },
+      { $set: { lastLogin: new Date() }, $setOnInsert: { firebaseUid: req.userId, email: req.userEmail } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
     res.json({
       userId: user.id,
       email: user.email,
@@ -57,7 +58,8 @@ router.post('/auth/verify', auth, async (req, res) => {
       webauthnCount: (user.webauthnCredentials || []).length,
       sendLimit: user.sendLimit || 100000,
     });
-  } catch {
+  } catch (e) {
+    console.error('auth/verify error:', e.message);
     res.status(500).json({ error: 'verify failed' });
   }
 });
@@ -70,7 +72,8 @@ router.put('/auth/send-limit', auth, async (req, res) => {
     }
     await User.updateOne({ firebaseUid: req.userId }, { $set: { sendLimit } });
     res.json({ sendLimit });
-  } catch {
+  } catch (e) {
+    console.error('auth/send-limit error:', e.message);
     res.status(500).json({ error: 'failed to update limit' });
   }
 });
@@ -81,7 +84,8 @@ router.put('/auth/profile', auth, async (req, res) => {
     if (!name || name.length < 1) return res.status(400).json({ error: 'Name required' });
     await User.updateOne({ firebaseUid: req.userId }, { $set: { name } });
     res.json({ name });
-  } catch {
+  } catch (e) {
+    console.error('auth/profile error:', e.message);
     res.status(500).json({ error: 'failed to update profile' });
   }
 });
@@ -95,7 +99,8 @@ router.post('/auth/delete-account', auth, async (req, res) => {
     await Beneficiary.deleteMany({ userId: user._id });
     await admin.auth().deleteUser(req.userId);
     res.json({ status: 'deleted' });
-  } catch {
+  } catch (e) {
+    console.error('delete-account error:', e.message);
     res.status(500).json({ error: 'failed to delete account' });
   }
 });
@@ -104,7 +109,8 @@ router.get('/notifications/prefs', auth, async (req, res) => {
   try {
     const user = await User.findOne({ firebaseUid: req.userId });
     res.json({ email: user.email, phone: user.phone || '', notifyWhatsApp: user.notifyWhatsApp || false });
-  } catch {
+  } catch (e) {
+    console.error('notifications/prefs error:', e.message);
     res.status(500).json({ error: 'failed to get prefs' });
   }
 });
@@ -118,7 +124,8 @@ router.post('/notifications/prefs', auth, async (req, res) => {
     await User.updateOne({ firebaseUid: req.userId }, { $set: update });
     const user = await User.findOne({ firebaseUid: req.userId });
     res.json({ email: user.email, phone: user.phone || '', notifyWhatsApp: user.notifyWhatsApp || false });
-  } catch {
+  } catch (e) {
+    console.error('notifications/prefs error:', e.message);
     res.status(500).json({ error: 'failed to save prefs' });
   }
 });
@@ -205,9 +212,6 @@ router.post('/send', auth, async (req, res) => {
   const tx = await Transaction.create({ userId: user.id, type: 'send', amount, currency, recipient, status: 'processing' });
 
   // ponytail: bank payout stub — RazorpayX account not configured
-  // TODO: wire up real RazorpayX account number before production
-
-  await tx.save();
   res.json({ txId: tx.id, balance: user.balance, amount, recipient, currency, status: tx.status });
 
   // ponytail: fire-and-forget notifications after response

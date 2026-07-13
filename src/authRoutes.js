@@ -234,7 +234,8 @@ router.get('/device/fingerprints', auth, async (req, res) => {
   try {
     const user = await User.findOne({ firebaseUid: req.userId });
     res.json({ devices: user.deviceFingerprints || [] });
-  } catch {
+  } catch (e) {
+    console.error('device/fingerprints error:', e.message);
     res.status(500).json({ error: 'failed to get devices' });
   }
 });

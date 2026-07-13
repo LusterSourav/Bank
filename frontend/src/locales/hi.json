@@ -160,5 +160,8 @@
   "copyAll": "Copy All",
   "download": "Download",
   "useBackupCode": "Use a backup code instead",
-  "backupCodeLabel": "Enter one of your backup codes"
+  "backupCodeLabel": "Enter one of your backup codes",
+  "biometricUnlockDesc": "Use your fingerprint or face to unlock your balance",
+  "unlockWithBiometric": "Unlock with Biometric",
+  "unlockSettings": "Unlock Settings"
 }

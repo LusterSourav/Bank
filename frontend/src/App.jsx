@@ -45,11 +45,16 @@ const API = import.meta.env.VITE_API_URL;
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 async function apiFetch(path, token, opts = {}) {
-  // auto-attach TOTP session token from localStorage
+  // auto-attach TOTP and WebAuthn session tokens from localStorage
   let totpToken = null;
   try {
     const s = JSON.parse(localStorage.getItem('totpSession') || '{}');
     if (s.totpToken && s.expiresAt > Date.now()) totpToken = s.totpToken;
+  } catch {}
+  let webauthnToken = null;
+  try {
+    const s = JSON.parse(localStorage.getItem('webauthnSession') || '{}');
+    if (s.webauthnToken && s.expiresAt > Date.now()) webauthnToken = s.webauthnToken;
   } catch {}
   const res = await fetch(`${API}${path}`, {
     ...opts,
@@ -57,6 +62,7 @@ async function apiFetch(path, token, opts = {}) {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(totpToken ? { 'X-Totp-Token': totpToken } : {}),
+      ...(webauthnToken ? { 'X-Webauthn-Token': webauthnToken } : {}),
       ...opts.headers,
     },
   });
@@ -66,6 +72,11 @@ async function apiFetch(path, token, opts = {}) {
   if (res.status === 403 && data.error === 'TOTP session expired') {
     localStorage.removeItem('totpSession');
     window.dispatchEvent(new Event('totpSessionExpired'));
+  }
+  // 403 from biometric enforcement → clear session so frontend shows unlock gate
+  if (res.status === 403 && data.error === 'Biometric session expired') {
+    localStorage.removeItem('webauthnSession');
+    window.dispatchEvent(new Event('webauthnSessionExpired'));
   }
     throw new Error(data.error || `HTTP ${res.status}`);
   }
@@ -257,16 +268,14 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
   const [showLogout, setShowLogout] = useState(false);
   const [privacyRevealed, setPrivacyRevealed] = useState(false);
   const privacyTimerRef = useRef(null);
-  // ponytail: restore TOTP session from localStorage with 1hr expiry — survives page refresh
-  const [totpSession, setTotpSession] = useState(() => {
-    const saved = localStorage.getItem('totpSession');
+  // ponytail: restore WebAuthn session from localStorage with 1hr expiry — survives page refresh
+  const [webauthnSession, setWebauthnSession] = useState(() => {
+    const saved = localStorage.getItem('webauthnSession');
     if (saved) { try { const s = JSON.parse(saved); if (s.expiresAt > Date.now()) return s; } catch {} }
     return null;
   });
-  const [totpUnlockCode, setTotpUnlockCode] = useState('');
-  const [totpUnlockErr, setTotpUnlockErr] = useState('');
+  const [webauthnUnlockErr, setWebauthnUnlockErr] = useState('');
   const [autoLocked, setAutoLocked] = useState(false);
-  const [useBackupCode, setUseBackupCode] = useState(false); // toggle between TOTP input and backup code input
 
   const darkMode = localStorage.getItem('darkMode') !== 'false';
   const showBalance = localStorage.getItem('showBalance') !== 'false';
@@ -288,54 +297,51 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
     }
   }, [token]);
 
-  // clear React state when totpSession is invalidated server-side (403)
+  // clear React state when webauthnSession is invalidated server-side (403)
   useEffect(() => {
-    const handleExpired = () => { setTotpSession(null); };
-    window.addEventListener('totpSessionExpired', handleExpired);
-    return () => window.removeEventListener('totpSessionExpired', handleExpired);
+    const handleExpired = () => { setWebauthnSession(null); };
+    window.addEventListener('webauthnSessionExpired', handleExpired);
+    return () => window.removeEventListener('webauthnSessionExpired', handleExpired);
   }, []);
 
   // ponytail: auto-lock on visibility change
   useEffect(() => {
     const handleVisibility = () => {
       const timer = localStorage.getItem('autoLockTimer');
-      if (document.visibilityState === 'visible' && timer && timer !== 'off' && user.totpEnabled) {
+      if (document.visibilityState === 'visible' && timer && timer !== 'off' && user.webauthnCredentials?.length) {
         setAutoLocked(true);
-        setTotpSession(null);
+        setWebauthnSession(null);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [user.totpEnabled]);
+  }, [user.webauthnCredentials]);
 
-  // persist TOTP session to localStorage so it survives page refresh
-  const verifyTotpUnlock = async () => {
+  // persist WebAuthn session to localStorage so it survives page refresh
+  const verifyWebauthnUnlock = async () => {
     try {
-      const body = useBackupCode
-        ? { backupCode: totpUnlockCode }
-        : { token: totpUnlockCode };
-      const d = await apiFetch('/totp/verify', token, { method: 'POST', body: JSON.stringify(body) });
-      const session = { totpToken: d.totpToken, verified: true, expiresAt: Date.now() + 3600000 };
-      setTotpSession(session);
-      localStorage.setItem('totpSession', JSON.stringify(session));
+      const opts = await apiFetch('/webauthn/authenticate/begin', token, { method: 'POST' });
+      const authResp = await startAuthentication(opts);
+      const d = await apiFetch('/webauthn/authenticate/complete', token, { method: 'POST', body: JSON.stringify(authResp) });
+      const session = { webauthnToken: d.webauthnToken, verified: true, expiresAt: Date.now() + 3600000 };
+      setWebauthnSession(session);
+      localStorage.setItem('webauthnSession', JSON.stringify(session));
       setAutoLocked(false);
-      setTotpUnlockCode('');
-      setTotpUnlockErr('');
-      setUseBackupCode(false);
+      setWebauthnUnlockErr('');
     } catch (e) {
-      setTotpUnlockErr(e.message);
+      setWebauthnUnlockErr(e.message);
     }
   };
 
   const revealBalance = () => {
-    if (user.totpEnabled && !totpSession) return;
+    if (user.webauthnCredentials?.length && !webauthnSession) return;
     if (!privacyPin) return;
     setPrivacyRevealed(true);
     if (privacyTimerRef.current) clearTimeout(privacyTimerRef.current);
     privacyTimerRef.current = setTimeout(() => setPrivacyRevealed(false), 3000);
   };
 
-  const balanceVisible = showBalance && (!privacyPin || privacyRevealed) && (!user.totpEnabled || totpSession);
+  const balanceVisible = showBalance && (!privacyPin || privacyRevealed) && (!user.webauthnCredentials?.length || webauthnSession);
 
   const totalSent = recentTxs.filter(t => t.type === 'send').reduce((sum, t) => sum + t.amount, 0);
   const totalReceived = recentTxs.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0);
@@ -386,24 +392,13 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
       {/* Balance card */}
       <div className="balance-card">
         <p className="balance-label">{t('yourBalance')}</p>
-        {(user.totpEnabled && (!totpSession || autoLocked)) ? (
+        {(user.webauthnCredentials?.length && (!webauthnSession || autoLocked)) ? (
           <div className="totp-unlock">
             {autoLocked && <p className="totp-unlock-desc" style={{ color: 'var(--warning)' }}><LockIcon size={14} /> {t('screenLocked')} — {t('screenLockedDesc')}</p>}
-            {!autoLocked && <p className="totp-unlock-desc">{useBackupCode ? t('backupCodeLabel') : t('totpUnlockDesc')}</p>}
-            <input
-              className="settings-input otp-input"
-              type="text"
-              maxLength={useBackupCode ? 9 : 6}
-              value={totpUnlockCode}
-              onChange={e => setTotpUnlockCode(useBackupCode ? e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') : e.target.value.replace(/\D/g, ''))}
-              placeholder={useBackupCode ? 'XXXX-XXXX' : '000000'}
-            />
-            {totpUnlockErr && <p className="error-text">{totpUnlockErr}</p>}
-            <button className="btn-primary" onClick={verifyTotpUnlock} disabled={useBackupCode ? totpUnlockCode.length < 9 : totpUnlockCode.length !== 6}>
-              {t('unlockBalance')}
-            </button>
-            <button className="btn-link" onClick={() => { setUseBackupCode(!useBackupCode); setTotpUnlockCode(''); setTotpUnlockErr(''); }}>
-              {useBackupCode ? t('totpUnlockDesc') : t('useBackupCode')}
+            <p className="totp-unlock-desc">{t('biometricUnlockDesc')}</p>
+            {webauthnUnlockErr && <p className="error-text">{webauthnUnlockErr}</p>}
+            <button className="btn-primary" onClick={verifyWebauthnUnlock}>
+              <FingerprintIcon size={18} /> {t('unlockWithBiometric')}
             </button>
           </div>
         ) : (
@@ -1089,6 +1084,13 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [webauthnCreds, setWebauthnCreds] = useState([]);
   const [waLoading, setWaLoading] = useState(false);
+  const [settingsUnlocked, setSettingsUnlocked] = useState(() => {
+    const saved = localStorage.getItem('totpSession');
+    if (saved) { try { const s = JSON.parse(saved); if (s.expiresAt > Date.now()) return true; } catch {} }
+    return !user.totpEnabled;
+  });
+  const [settingsTotpCode, setSettingsTotpCode] = useState('');
+  const [settingsTotpErr, setSettingsTotpErr] = useState('');
 
   // Spending limit
   const [sendLimitInput, setSendLimitInput] = useState(user.sendLimit || 100000);
@@ -1111,6 +1113,19 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
     try { const d = await apiFetch('/webauthn/credentials', token); setWebauthnCreds(d.credentials); } catch {}
   };
   useEffect(() => { loadWebauthnCreds(); }, [token]);
+
+  // TOTP unlock for settings page
+  const unlockSettings = async () => {
+    setSettingsTotpErr('');
+    try {
+      const d = await apiFetch('/totp/verify', token, { method: 'POST', body: JSON.stringify({ token: settingsTotpCode }) });
+      const session = { totpToken: d.totpToken, verified: true, expiresAt: Date.now() + 3600000 };
+      localStorage.setItem('totpSession', JSON.stringify(session));
+      setSettingsUnlocked(true);
+    } catch (e) {
+      setSettingsTotpErr(e.message);
+    }
+  };
 
   useEffect(() => {
     apiFetch('/device/fingerprints', token).then(d => { setDevices(d.devices || []); setDevicesLoading(false); }).catch(() => setDevicesLoading(false));
@@ -1208,6 +1223,28 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
         <h3>{t('settingsTitle')}</h3>
         <div />
       </header>
+
+      {user.totpEnabled && !settingsUnlocked ? (
+        <div className="balance-card">
+          <div className="totp-unlock">
+            <p className="totp-unlock-desc">{t('totpUnlockDesc')}</p>
+            <input
+              className="settings-input otp-input"
+              type="text"
+              maxLength={6}
+              value={settingsTotpCode}
+              onChange={e => setSettingsTotpCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="000000"
+            />
+            {settingsTotpErr && <p className="error-text">{settingsTotpErr}</p>}
+            <button className="btn-primary" onClick={unlockSettings} disabled={settingsTotpCode.length !== 6}>
+              {t('unlockSettings')}
+            </button>
+          </div>
+        </div>
+      ) : (
+      <>
+
 
       {/* Profile Card */}
       <div className="settings-section">
@@ -1693,8 +1730,9 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
             </div>
             <ArrowRightIcon size={16} />
           </button>
+          </div>
         </div>
-      </div>
+      </>)}
     </div>
   );
 }

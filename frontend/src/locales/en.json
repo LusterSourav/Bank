@@ -206,12 +206,15 @@
   "deleteAccountConfirm": "This action cannot be undone. All data will be permanently deleted.",
   "deleteAccountBtn": "Delete My Account",
   "screenLocked": "Screen Locked",
-  "screenLockedDesc": "Enter your authenticator code to continue",
+  "screenLockedDesc": "Use biometrics to unlock your balance",
   "backupCodesTitle": "Backup Codes",
   "backupCodesWarning": "Save these codes somewhere safe. Each code can only be used once. You won't be able to see them again.",
   "backupCodesSaved": "I've saved my codes",
   "copyAll": "Copy All",
   "download": "Download",
   "useBackupCode": "Use a backup code instead",
-  "backupCodeLabel": "Enter one of your backup codes"
+  "backupCodeLabel": "Enter one of your backup codes",
+  "biometricUnlockDesc": "Use your fingerprint or face to unlock your balance",
+  "unlockWithBiometric": "Unlock with Biometric",
+  "unlockSettings": "Unlock Settings"
 }

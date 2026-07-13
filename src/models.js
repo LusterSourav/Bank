@@ -27,8 +27,13 @@ const userSchema = new mongoose.Schema({
     verifiedAt: Date,
   },
   // TOTP
-  totpSecret: String,
+  totpSecret: String, // encrypted with AES-256-GCM before storage
   totpEnabled: { type: Boolean, default: false },
+  backupCodes: [{ // bcrypt hashes, never stored as plaintext
+    hash: { type: String, required: true },
+    used: { type: Boolean, default: false },
+    usedAt: Date,
+  }],
   // WebAuthn
   webauthnCredentials: [{
     credentialId: { type: String, required: true },

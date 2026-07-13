@@ -64,10 +64,10 @@ router.post('/totp/verify', auth, async (req, res) => {
     }
 
     // ponytail: rate limit TOTP attempts — 5 per 15 min
-    const attempts = store.increment(`totp:${user._id}`, 900000);
-    if (store.get(`totp:${user._id}`) > 5) {
+    if (store.count(`totp:${user._id}`, 900000) >= 5) {
       return res.status(429).json({ error: 'Too many attempts. Try again later.' });
     }
+    store.append(`totp:${user._id}`, 1, 900000);
 
     let verified = false;
     if (backupCode) {

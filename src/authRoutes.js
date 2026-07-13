@@ -3,6 +3,7 @@ import { auth } from './middleware.js';
 import { User } from './models.js';
 import { generateSecret, generateQrDataUrl, verifyToken, generateBackupCodes, verifyBackupCode } from './totp.js';
 import { encrypt, decrypt } from './encryption.js';
+import { signTotpSession } from './totpSession.js';
 import { createRegistrationOptions, verifyRegistration, createAuthenticationOptions, verifyAuthentication, getRpId, getOrigin } from './webauthn.js';
 import store from './fraud/store.js';
 
@@ -87,7 +88,7 @@ router.post('/totp/verify', auth, async (req, res) => {
     }
 
     store.delete(`totp:${user._id}`);
-    res.json({ status: 'verified', expiresIn: 3600 });
+    res.json({ status: 'verified', expiresIn: 3600, totpToken: signTotpSession(req.userId) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -26,6 +26,7 @@ export async function createRegistrationOptions(userId, userEmail, existingCrede
       transports: c.transports,
     })),
     authenticatorSelection: {
+      authenticatorAttachment: 'platform',
       userVerification: 'preferred',
       residentKey: 'preferred',
     },

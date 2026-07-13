@@ -6,16 +6,21 @@ import {
 } from '@simplewebauthn/server';
 
 const RP_NAME = 'Sendly';
-const RP_ID = process.env.RP_ID || 'bank-app-three-psi.vercel.app';
-const ORIGIN = process.env.RP_ORIGIN || 'https://bank-app-three-psi.vercel.app';
 
-export function getRpId() { return RP_ID; }
-export function getOrigin() { return ORIGIN; }
+export function getRpId() { return process.env.RP_ID || 'bank-app-three-psi.vercel.app'; }
+export function getOrigin() { return process.env.RP_ORIGIN || 'https://bank-app-three-psi.vercel.app'; }
 
-export async function createRegistrationOptions(userId, userEmail, existingCredentials = []) {
+function rpParams(hostname) {
+  const clean = (hostname || getRpId()).split(':')[0];
+  return { rpID: clean, origin: `https://${clean}` };
+}
+
+export async function createRegistrationOptions(userId, userEmail, existingCredentials = [], hostname) {
+  const { rpID, origin } = rpParams(hostname);
   return generateRegistrationOptions({
     rpName: RP_NAME,
-    rpID: RP_ID,
+    rpID,
+    origin,
     userName: userEmail,
     userDisplayName: userEmail,
     userID: Buffer.from(userId, 'utf-8'),
@@ -33,18 +38,20 @@ export async function createRegistrationOptions(userId, userEmail, existingCrede
   });
 }
 
-export async function verifyRegistration(userId, response, expectedChallenge) {
+export async function verifyRegistration(userId, response, expectedChallenge, hostname) {
+  const { rpID, origin } = rpParams(hostname);
   return verifyRegistrationResponse({
     response,
     expectedChallenge,
-    expectedOrigin: ORIGIN,
-    expectedRPID: RP_ID,
+    expectedOrigin: origin,
+    expectedRPID: rpID,
   });
 }
 
-export async function createAuthenticationOptions(existingCredentials = []) {
+export async function createAuthenticationOptions(existingCredentials = [], hostname) {
+  const { rpID } = rpParams(hostname);
   return generateAuthenticationOptions({
-    rpID: RP_ID,
+    rpID,
     allowCredentials: existingCredentials.map(c => ({
       id: c.credentialId,
       type: 'public-key',
@@ -54,12 +61,13 @@ export async function createAuthenticationOptions(existingCredentials = []) {
   });
 }
 
-export async function verifyAuthentication(response, expectedChallenge, credential) {
+export async function verifyAuthentication(response, expectedChallenge, credential, hostname) {
+  const { rpID, origin } = rpParams(hostname);
   return verifyAuthenticationResponse({
     response,
     expectedChallenge,
-    expectedOrigin: ORIGIN,
-    expectedRPID: RP_ID,
+    expectedOrigin: origin,
+    expectedRPID: rpID,
     credential,
   });
 }

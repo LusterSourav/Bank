@@ -168,7 +168,7 @@ router.post('/webauthn/register/begin', auth, async (req, res) => {
     const user = await User.findOne({ firebaseUid: req.userId });
     const email = user.email || user._id.toString();
     const existing = user.webauthnCredentials || [];
-    const options = await createRegistrationOptions(user._id.toString(), email, existing);
+    const options = await createRegistrationOptions(user._id.toString(), email, existing, req.headers.host);
 
     await User.updateOne({ firebaseUid: req.userId }, { $set: { webauthnChallenge: options.challenge } });
     res.json(options);
@@ -186,6 +186,7 @@ router.post('/webauthn/register/complete', auth, async (req, res) => {
       user._id.toString(),
       req.body,
       user.webauthnChallenge,
+      req.headers.host,
     );
 
     if (!verification.verified || !verification.registrationInfo) {
@@ -232,7 +233,7 @@ router.post('/webauthn/authenticate/begin', auth, async (req, res) => {
   try {
     const user = await User.findOne({ firebaseUid: req.userId });
     const existing = user.webauthnCredentials || [];
-    const options = await createAuthenticationOptions(existing);
+    const options = await createAuthenticationOptions(existing, req.headers.host);
 
     await User.updateOne({ firebaseUid: req.userId }, { $set: { webauthnChallenge: options.challenge } });
     res.json(options);
@@ -260,7 +261,7 @@ router.post('/webauthn/authenticate/complete', auth, async (req, res) => {
       transports: storedCred.transports || [],
     };
 
-    const verification = await verifyAuthentication(req.body, user.webauthnChallenge, credential);
+    const verification = await verifyAuthentication(req.body, user.webauthnChallenge, credential, req.headers.host);
 
     if (!verification.verified) {
       return res.status(400).json({ error: 'Authentication failed' });

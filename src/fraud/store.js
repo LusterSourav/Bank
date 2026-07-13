@@ -39,6 +39,7 @@ class MemoryStore {
   }
 
   // TOTP rate limit — track failed attempts
+  // ponytail: increment returns count after adding, check with get()
   increment(key, ttl = 900000) {
     if (!this.data.has(key)) this.data.set(key, [{ value: 1, time: Date.now(), ttl }]);
     else {
@@ -50,8 +51,11 @@ class MemoryStore {
     return 1;
   }
 
+  // ponytail: filters expired entries before summing — prevents permanent lockout
+  // must filter by ttl to respect the rate-limit window
   get(key) {
-    const entries = this.data.get(key) || [];
+    const now = Date.now();
+    const entries = (this.data.get(key) || []).filter(e => now - e.time < e.ttl);
     return entries.reduce((s, e) => s + e.value, 0);
   }
 

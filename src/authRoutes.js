@@ -235,6 +235,7 @@ router.post('/webauthn/authenticate/begin', auth, async (req, res) => {
   try {
     const user = await User.findOne({ firebaseUid: req.userId });
     const existing = user.webauthnCredentials || [];
+    if (!existing.length) return res.status(400).json({ error: 'No biometric credentials registered' });
     const options = await createAuthenticationOptions(existing, req.headers.host);
 
     await User.updateOne({ firebaseUid: req.userId }, { $set: { webauthnChallenge: options.challenge } });

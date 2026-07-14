@@ -319,6 +319,10 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
   const verifyWebauthnUnlock = async () => {
     try {
       const opts = await apiFetch('/webauthn/authenticate/begin', token, { method: 'POST' });
+      if (!opts.allowCredentials?.length) {
+        setWebauthnUnlockErr('No biometric registered. Register in Settings to enable.');
+        return;
+      }
       const authResp = await startAuthentication(opts);
       const d = await apiFetch('/webauthn/authenticate/complete', token, { method: 'POST', body: JSON.stringify(authResp) });
       const session = { webauthnToken: d.webauthnToken, verified: true, expiresAt: Date.now() + 3600000 };
@@ -1164,7 +1168,7 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
     setWaLoading(false);
   };
   const removeCredential = async (id) => {
-    try { await apiFetch(`/webauthn/credentials/${id}`, token, { method: 'DELETE' }); await loadWebauthnCreds(); } catch {}
+    try { await apiFetch(`/webauthn/credentials/${id}`, token, { method: 'DELETE' }); await loadWebauthnCreds(); onRefreshUser(); } catch {}
   };
 
   const toggleBool = (key, setter) => {

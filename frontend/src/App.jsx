@@ -262,7 +262,7 @@ function ResetPasswordScreen({ oobCode, onBack }) {
   );
 }
 
-function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings, onKyc, onLogout }) {
+function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings, onKyc, onLogout, platformAuthAvail }) {
   const { t } = useTranslation();
   const [recentTxs, setRecentTxs] = useState([]);
   const [showLogout, setShowLogout] = useState(false);
@@ -1840,7 +1840,7 @@ export default function App() {
     case 'login': return <LoginScreen onGoogleLogin={handleGoogleLogin} onEmailLogin={handleEmailLogin} isSignUp={isSignUp} setIsSignUp={setIsSignUp} error={authError} onForgotPassword={() => setScreen('forgotPassword')} />;
     case 'forgotPassword': return <ForgotPasswordScreen onBack={() => setScreen('login')} />;
     case 'resetPassword': return <ResetPasswordScreen oobCode={resetOobCode} onBack={() => setScreen('login')} />;
-    case 'dashboard': return <DashboardScreen user={user} token={token} onSend={() => setScreen('send')} onDeposit={() => setScreen('deposit')} onHistory={() => setScreen('history')} onSettings={() => setScreen('settings')} onKyc={() => setScreen('kyc')} onLogout={handleLogout} />;
+    case 'dashboard': return <DashboardScreen user={user} token={token} platformAuthAvail={platformAuthAvail} onSend={() => setScreen('send')} onDeposit={() => setScreen('deposit')} onHistory={() => setScreen('history')} onSettings={() => setScreen('settings')} onKyc={() => setScreen('kyc')} onLogout={handleLogout} />;
     case 'kyc': return <KycScreen token={token} user={user} onBack={() => setScreen('settings')} onKycDone={refreshUser} />;
     case 'deposit': return <DepositScreen token={token} onBack={refreshUser} />;
     case 'send': return <SendScreen token={token} user={user} onBack={refreshUser} />;

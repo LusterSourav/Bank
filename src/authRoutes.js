@@ -201,7 +201,7 @@ router.post('/webauthn/register/complete', auth, async (req, res) => {
           credentialId: Buffer.from(credential.id).toString('base64url'),
           publicKey: Buffer.from(credential.publicKey).toString('base64url'),
           counter: credential.counter,
-          transports: req.body.response?.transports || [],
+          transports: req.body.response?.transports?.length ? req.body.response.transports : ['internal'],
           authenticatorAttachment: req.body.response?.authenticatorAttachment || '',
           deviceName: req.body.deviceName || 'Unknown device',
           registeredAt: new Date(),
@@ -261,7 +261,7 @@ router.post('/webauthn/authenticate/complete', auth, async (req, res) => {
       id: Buffer.from(storedCred.credentialId, 'base64url'),
       publicKey: Buffer.from(storedCred.publicKey, 'base64url'),
       counter: storedCred.counter,
-      transports: storedCred.transports || [],
+      transports: storedCred.transports?.length ? storedCred.transports : ['internal'],
     };
 
     const verification = await verifyAuthentication(req.body, user.webauthnChallenge, credential, req.headers.host);

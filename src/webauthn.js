@@ -54,7 +54,7 @@ export async function createAuthenticationOptions(existingCredentials = [], host
     allowCredentials: existingCredentials.map(c => ({
       id: c.credentialId,
       type: 'public-key',
-      transports: c.transports || ['internal'],
+      transports: c.transports?.length ? c.transports : ['internal'],
     })),
     userVerification: 'preferred',
   });

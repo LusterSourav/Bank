@@ -50,18 +50,4 @@ export function validateAadhaarChecksum(uid) {
   return validateAadhaar(uid);
 }
 
-// ponytail: simple rate limit for OTP endpoints
-const otpRate = {};
 
-export function checkOtpRate(key, maxAttempts = 5, windowMs = 900000) {
-  cleanup.call(null, key, windowMs); // won't work, use inline
-  if (!otpRate[key]) otpRate[key] = [];
-  otpRate[key] = otpRate[key].filter(t => Date.now() - t < windowMs);
-  if (otpRate[key].length >= maxAttempts) return false;
-  otpRate[key].push(Date.now());
-  return true;
-}
-
-export function resetOtpRate(key) {
-  delete otpRate[key];
-}

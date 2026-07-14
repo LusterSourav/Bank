@@ -1,6 +1,6 @@
 import admin from 'firebase-admin';
 import { User } from './models.js';
-import { verifyTotpSession, verifyWebauthnSession } from './totpSession.js';
+import { verifyTotpSession } from './totpSession.js';
 import config from './config.js';
 
 // ponytail: wrapped in try-catch so a bad key doesn't crash the function
@@ -55,20 +55,4 @@ export async function totpRequired(req, res, next) {
   }
 }
 
-// Biometric gate enforcement. Checks X-Webauthn-Token header for routes
-// that require biometric verification.
-export async function webauthnRequired(req, res, next) {
-  const user = await User.findOne({ firebaseUid: req.userId });
-  if (!user?.webauthnCredentials?.length) return next();
 
-  const token = req.headers['x-webauthn-token'];
-  if (!token) return res.status(403).json({ error: 'Biometric verification required' });
-
-  try {
-    const payload = verifyWebauthnSession(token);
-    if (payload.sub !== req.userId) return res.status(403).json({ error: 'Invalid biometric session' });
-    next();
-  } catch {
-    return res.status(403).json({ error: 'Biometric session expired' });
-  }
-}

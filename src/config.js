@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 // ponytail: single JSON env var for Firebase service account — avoids newline mangling across Vercel/local
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
 

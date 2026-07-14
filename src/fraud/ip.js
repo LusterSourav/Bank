@@ -38,6 +38,4 @@ export function isHighRisk(result) {
   return result.score > 80 || result.proxy || result.vpn || result.tor;
 }
 
-export function isMediumRisk(result) {
-  return result.score > 50 || (result.country && !result.mobile);
-}
+

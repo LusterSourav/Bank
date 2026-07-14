@@ -34,8 +34,6 @@ import {
   EditIcon,
   AlertCircleIcon,
   QrCodeIcon,
-  SafeIcon,
-  PasswordIcon,
 } from '@bitcoin-design/bitcoin-icons-react/outline';
 import { auth, googleProvider } from './firebase';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';

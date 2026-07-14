@@ -11,8 +11,6 @@ if (!cached) cached = global._mongoose = { conn: null };
 export default async function connect() {
   if (cached.conn) return cached.conn;
   cached.conn = await mongoose.connect(config.mongoUri);
-  // ponytail: drop stale indexes from previous auth providers
-  cached.conn.connection.db.collection('users').dropIndex('privyDid_1').catch(() => {});
   console.log('db connected');
   return cached.conn;
 }

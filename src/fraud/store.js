@@ -1,8 +1,4 @@
-// ponytail: abstracted velocity store — uses in-memory Map by default, swap to
-// Redis by uncommenting the ioredis path. No Redis infra needed for dev/test.
-// import Redis from 'ioredis';
-
-// const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+// ponytail: in-memory velocity store — swap to Redis for production if needed.
 
 class MemoryStore {
   constructor() {
@@ -29,34 +25,6 @@ class MemoryStore {
     const now = Date.now();
     const entries = this.data.get(key) || [];
     return entries.filter(e => now - e.time < windowMs).length;
-  }
-
-  unique(key, field, windowMs) {
-    const now = Date.now();
-    const entries = this.data.get(key) || [];
-    const recent = entries.filter(e => now - e.time < windowMs);
-    return new Set(recent.map(e => e.value && e.value[field])).size;
-  }
-
-  // TOTP rate limit — track failed attempts
-  // ponytail: increment returns count after adding, check with get()
-  increment(key, ttl = 900000) {
-    if (!this.data.has(key)) this.data.set(key, [{ value: 1, time: Date.now(), ttl }]);
-    else {
-      const entries = this.data.get(key);
-      const total = entries.reduce((s, e) => s + e.value, 0);
-      entries.push({ value: 1, time: Date.now(), ttl });
-      return total + 1;
-    }
-    return 1;
-  }
-
-  // ponytail: filters expired entries before summing — prevents permanent lockout
-  // must filter by ttl to respect the rate-limit window
-  get(key) {
-    const now = Date.now();
-    const entries = (this.data.get(key) || []).filter(e => now - e.time < e.ttl);
-    return entries.reduce((s, e) => s + e.value, 0);
   }
 
   delete(key) {

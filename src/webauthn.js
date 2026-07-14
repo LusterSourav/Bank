@@ -31,7 +31,6 @@ export async function createRegistrationOptions(userId, userEmail, existingCrede
       transports: c.transports,
     })),
     authenticatorSelection: {
-      authenticatorAttachment: 'platform',
       userVerification: 'preferred',
       residentKey: 'preferred',
     },
@@ -55,7 +54,7 @@ export async function createAuthenticationOptions(existingCredentials = [], host
     allowCredentials: existingCredentials.map(c => ({
       id: c.credentialId,
       type: 'public-key',
-      transports: ['internal'],
+      transports: c.transports || ['internal'],
     })),
     userVerification: 'preferred',
   });

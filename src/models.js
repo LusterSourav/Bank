@@ -40,6 +40,7 @@ const userSchema = new mongoose.Schema({
     publicKey: { type: String, required: true },
     counter: { type: Number, default: 0 },
     transports: [String],
+    authenticatorAttachment: String,
     deviceName: String,
     registeredAt: { type: Date, default: Date.now },
   }],

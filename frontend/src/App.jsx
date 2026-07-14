@@ -327,7 +327,11 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
       setAutoLocked(false);
       setWebauthnUnlockErr('');
     } catch (e) {
-      setWebauthnUnlockErr(e.message);
+      if (e.name === 'NotAllowedError') {
+        setWebauthnUnlockErr('No matching biometric found. Register in Settings using this browser.');
+      } else {
+        setWebauthnUnlockErr(e.message);
+      }
     }
   };
 

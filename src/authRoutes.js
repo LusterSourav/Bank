@@ -202,6 +202,7 @@ router.post('/webauthn/register/complete', auth, async (req, res) => {
           publicKey: Buffer.from(credential.publicKey).toString('base64url'),
           counter: credential.counter,
           transports: req.body.response?.transports || [],
+          authenticatorAttachment: req.body.response?.authenticatorAttachment || '',
           deviceName: req.body.deviceName || 'Unknown device',
           registeredAt: new Date(),
         },
@@ -221,6 +222,7 @@ router.get('/webauthn/credentials', auth, async (req, res) => {
     const creds = (user.webauthnCredentials || []).map(c => ({
       id: c.credentialId,
       deviceName: c.deviceName,
+      authenticatorAttachment: c.authenticatorAttachment,
       registeredAt: c.registeredAt,
     }));
     res.json({ credentials: creds, rpId: getRpId(), origin: getOrigin() });

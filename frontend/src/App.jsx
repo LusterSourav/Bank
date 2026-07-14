@@ -1084,7 +1084,6 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [webauthnCreds, setWebauthnCreds] = useState([]);
   const [waLoading, setWaLoading] = useState(false);
-  const [platformAuthAvail, setPlatformAuthAvail] = useState(null);
   const [settingsUnlocked, setSettingsUnlocked] = useState(() => {
     const saved = localStorage.getItem('totpSession');
     if (saved) { try { const s = JSON.parse(saved); if (s.expiresAt > Date.now()) return true; } catch {} }
@@ -1747,6 +1746,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [resetOobCode, setResetOobCode] = useState('');
+  const [platformAuthAvail, setPlatformAuthAvail] = useState(null);
 
   useEffect(() => {
     const setDir = (lng) => { document.documentElement.dir = ['ar', 'he', 'fa', 'ur'].includes(lng) ? 'rtl' : 'ltr'; };

@@ -392,7 +392,7 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
       {/* Balance card */}
       <div className="balance-card">
         <p className="balance-label">{t('yourBalance')}</p>
-        {((user.webauthnCount || 0) > 0 && (!webauthnSession || autoLocked)) ? (
+        {((user.webauthnCount || 0) > 0 && (!webauthnSession || autoLocked) && platformAuthAvail !== false) ? (
           <div className="totp-unlock">
             {autoLocked && <p className="totp-unlock-desc" style={{ color: 'var(--warning)' }}><LockIcon size={14} /> {t('screenLocked')} — {t('screenLockedDesc')}</p>}
             <p className="totp-unlock-desc">{t('biometricUnlockDesc')}</p>
@@ -1084,6 +1084,7 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [webauthnCreds, setWebauthnCreds] = useState([]);
   const [waLoading, setWaLoading] = useState(false);
+  const [platformAuthAvail, setPlatformAuthAvail] = useState(null);
   const [settingsUnlocked, setSettingsUnlocked] = useState(() => {
     const saved = localStorage.getItem('totpSession');
     if (saved) { try { const s = JSON.parse(saved); if (s.expiresAt > Date.now()) return true; } catch {} }
@@ -1752,6 +1753,11 @@ export default function App() {
     setDir(i18n.language);
     i18n.on('languageChanged', setDir);
     return () => i18n.off('languageChanged', setDir);
+  }, []);
+
+  // ponytail: safari detects platform auth, chrome on macos doesn't
+  useEffect(() => {
+    PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable?.().then(setPlatformAuthAvail);
   }, []);
 
   // ponytail: check URL for password reset params

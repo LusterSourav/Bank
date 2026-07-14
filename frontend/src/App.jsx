@@ -99,6 +99,7 @@ const b64url = (buf) => {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 };
 const isWebKit = () => /AppleWebKit/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+const isMobile = () => /Android|iPhone|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
 
 function LoginScreen({ onGoogleLogin, onEmailLogin, isSignUp, setIsSignUp, error, onForgotPassword }) {
   const { t } = useTranslation();
@@ -281,6 +282,9 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
     return null;
   });
   const [webauthnUnlockErr, setWebauthnUnlockErr] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [totpUnlockErr, setTotpUnlockErr] = useState('');
+  const [totpUnlockLoading, setTotpUnlockLoading] = useState(false);
   const [autoLocked, setAutoLocked] = useState(false);
 
   const darkMode = localStorage.getItem('darkMode') !== 'false';
@@ -375,6 +379,23 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
     }
   };
 
+  // ponytail: TOTP unlock for mobile — creates webauthnSession to unlock balance
+  const unlockWithTotp = async () => {
+    setTotpUnlockLoading(true);
+    setTotpUnlockErr('');
+    try {
+      const d = await apiFetch('/totp/verify', token, { method: 'POST', body: JSON.stringify({ token: totpCode }) });
+      const session = { webauthnToken: d.totpToken, verified: true, expiresAt: Date.now() + 3600000 };
+      setWebauthnSession(session);
+      localStorage.setItem('webauthnSession', JSON.stringify(session));
+      setTotpCode('');
+      setAutoLocked(false);
+    } catch (e) {
+      setTotpUnlockErr(e.message);
+    }
+    setTotpUnlockLoading(false);
+  };
+
   const revealBalance = () => {
     if ((user.webauthnCount || 0) > 0 && !webauthnSession) return;
     if (!privacyPin) return;
@@ -434,15 +455,39 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
       {/* Balance card */}
       <div className="balance-card">
         <p className="balance-label">{t('yourBalance')}</p>
-        {((user.webauthnCount || 0) > 0 && (!webauthnSession || autoLocked) && platformAuthAvail !== false) ? (
-          <div className="totp-unlock">
-            {autoLocked && <p className="totp-unlock-desc" style={{ color: 'var(--warning)' }}><LockIcon size={14} /> {t('screenLocked')} — {t('screenLockedDesc')}</p>}
-            <p className="totp-unlock-desc">{t('biometricUnlockDesc')}</p>
-            {webauthnUnlockErr && <p className="error-text">{webauthnUnlockErr}</p>}
-            <button className="btn-primary" onClick={verifyWebauthnUnlock}>
-              <FingerprintIcon size={18} /> {t('unlockWithBiometric')}
-            </button>
-          </div>
+        {((user.webauthnCount || 0) > 0 && (!webauthnSession || autoLocked)) ? (
+          isMobile() || platformAuthAvail === false ? (
+            user.totpEnabled ? (
+              <div className="totp-unlock">
+                <p className="totp-unlock-desc">Enter 6-digit code from your authenticator app</p>
+                {totpUnlockErr && <p className="error-text">{totpUnlockErr}</p>}
+                <input
+                  className="settings-input otp-input"
+                  type="text" maxLength={6}
+                  value={totpCode}
+                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                />
+                <button className="btn-primary" onClick={unlockWithTotp} disabled={totpUnlockLoading || totpCode.length !== 6}>
+                  {totpUnlockLoading ? 'Verifying...' : 'Unlock with TOTP'}
+                </button>
+              </div>
+            ) : (
+              <div className="totp-unlock">
+                <p className="totp-unlock-desc">Enable TOTP in Settings to unlock on this device</p>
+                <button className="btn-primary" onClick={onSettings}><GearIcon size={18} /> Go to Settings</button>
+              </div>
+            )
+          ) : (
+            <div className="totp-unlock">
+              {autoLocked && <p className="totp-unlock-desc" style={{ color: 'var(--warning)' }}><LockIcon size={14} /> {t('screenLocked')} — {t('screenLockedDesc')}</p>}
+              <p className="totp-unlock-desc">{t('biometricUnlockDesc')}</p>
+              {webauthnUnlockErr && <p className="error-text">{webauthnUnlockErr}</p>}
+              <button className="btn-primary" onClick={verifyWebauthnUnlock}>
+                <FingerprintIcon size={18} /> {t('unlockWithBiometric')}
+              </button>
+            </div>
+          )
         ) : (
           <>
             <h2 className={privacyPin && !privacyRevealed ? 'balance-reveal-hint' : 'balance-amount'} onClick={revealBalance}>

@@ -26,6 +26,8 @@ export default {
   sandbox: {
     apiKey: process.env.SANDBOX_API_KEY || '',
     apiSecret: process.env.SANDBOX_API_SECRET || '',
+    // ponytail: set to https://test-api.sandbox.co.in for test keys (key_test_*)
+    baseUrl: process.env.SANDBOX_BASE_URL || 'https://api.sandbox.co.in',
   },
 
   // AES-256-GCM key for TOTP secrets at rest — 32 bytes as 64 hex chars

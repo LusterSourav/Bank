@@ -29,7 +29,7 @@ let sandboxTokenExpiry = 0;
 async function getSandboxToken() {
   if (sandboxToken && Date.now() < sandboxTokenExpiry) return sandboxToken;
 
-  const res = await fetch('https://api.sandbox.co.in/authenticate', {
+  const res = await fetch(`${config.sandbox.baseUrl}/authenticate`, {
     method: 'POST',
     headers: {
       'x-api-key': config.sandbox.apiKey,
@@ -52,7 +52,7 @@ async function getSandboxToken() {
 
 async function sandboxFetch(path, body) {
   const token = await getSandboxToken();
-  const res = await fetch(`https://api.sandbox.co.in${path}`, {
+  const res = await fetch(`${config.sandbox.baseUrl}${path}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,

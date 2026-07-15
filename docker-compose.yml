@@ -1,0 +1,14 @@
+services:
+  erebor:
+    image: haeli05/erebor:latest
+    ports:
+      - "3002:3000"
+    volumes:
+      - erebor-data:/data/keys
+    environment:
+      - EREBOR_SECRET=${EREBOR_SECRET:-change-me}
+      - NETWORK=polygon-amoy
+    restart: unless-stopped
+
+volumes:
+  erebor-data:

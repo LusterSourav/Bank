@@ -1,41 +1,66 @@
-// ponytail: IP fraud scoring via IPASIS (free tier: 3,000 req/month).
-// Uses validate-email endpoint with dummy email to get IP risk score.
-const IPASIS_URL = 'https://api.ipasis.com/v1/validate-email';
+//ip fraud scoring via ipasis (3k req/mo free). uses validate-email endpoint with dummy email.
+const IPASIS_URL='https://api.ipasis.com/v1/validate-email';
 
-export async function scoreIp(ip) {
-  const key = process.env.IPASIS_API_KEY;
-  if (!key) {
-    // ponytail: no API key = skip scoring, return neutral
-    return { score: 0, proxy: false, vpn: false, tor: false, country: '', city: '', asn: '', mobile: false };
+
+
+export async function scoreIp(ip){
+  const key= process.env.IPASIS_API_KEY;
+
+
+  if(!key){
+    //no key = neutral score
+    return {score: 0, proxy: false,vpn: false, tor: false,country: '', city: '', asn: '',mobile: false};
   }
 
-  try {
+  try{
+
+
+
+
     const resp = await fetch(`${IPASIS_URL}?email=check@bank.app&ip=${ip}`, {
-      headers: { 'X-API-Key': key },
+      headers:{ 'X-API-Key': key},
     });
-    const data = await resp.json();
-    const r = data.risk || {};
-    const ip = data.ip || {};
-    const p = ip.privacy || {};
-    const a = ip.asn || {};
+    const data=await resp.json();
+    const r= data.risk ||{};
+
+
+    const ipInfo= data.ip ||{};
+    const p=ipInfo.privacy ||{};
+
+
+    const a = ipInfo.asn ||{};
     return {
+
+
+
+
       score: r.score ?? 0,
       proxy: p.Proxy ?? false,
       vpn: p.VPN ?? false,
       tor: p.Tor ?? false,
-      country: ip.country ?? '',
-      city: ip.city ?? '',
+      country: ipInfo.country ?? '',
+      city: ipInfo.city ?? '',
       asn: a.ASN ?? '',
       mobile: false,
       risk: r.level ?? 'unknown',
     };
-  } catch {
-    return { score: 0, proxy: false, vpn: false, tor: false, country: '', city: '', asn: '', mobile: false };
+  }catch{
+    return{ score: 0,proxy: false,vpn: false, tor: false, country: '',city: '', asn: '', mobile: false};
   }
+
+
 }
 
-export function isHighRisk(result) {
+
+
+
+
+export function isHighRisk(result){
   return result.score > 80 || result.proxy || result.vpn || result.tor;
 }
+
+
+
+
 
 

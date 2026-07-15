@@ -113,22 +113,22 @@ function LoginScreen({ onGoogleLogin, onEmailLogin, isSignUp, setIsSignUp, error
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   return (
-    <div className="login-screen page-enter">
+    <div data-testid="login-screen" className="login-screen page-enter">
       <div className="login-card">
         <div className="logo"><BitcoinIcon size={56} /></div>
         <h1>{t('appName')}</h1>
         <p className="subtitle">{t('appSubtitle')}</p>
         {error && <p className="error-text login-error"><InfoIcon size={14} /> {error}</p>}
         <div className="form-group">
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('email')} />
+          <input data-testid="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('email')} />
         </div>
         <div className="form-group">
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('password')} />
+          <input data-testid="login-password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('password')} />
         </div>
-        <button className="btn-primary" onClick={() => onEmailLogin(email, password)}>
+        <button data-testid="login-submit" className="btn-primary" onClick={() => onEmailLogin(email, password)}>
           {isSignUp ? t('createAccount') : t('signIn')}
         </button>
-        <button className="btn-secondary" onClick={onGoogleLogin}>
+        <button data-testid="login-google" className="btn-secondary" onClick={onGoogleLogin}>
           <GoogleIcon size={18} /> {t('continueWithGoogle')}
         </button>
         {!isSignUp && (
@@ -423,7 +423,7 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
   const fmtIST = (d) => d ? new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
 
   return (
-    <div className="dashboard page-enter">
+    <div data-testid="dashboard-screen" className="dashboard page-enter">
       <header className="dash-header">
         <div className="logo-small"><BitcoinIcon size={24} /></div>
         <div className="user-info">
@@ -434,7 +434,7 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
       </header>
 
       {/* Profile Card */}
-      <div className="profile-card">
+      <div data-testid="profile-card" className="profile-card">
         <div className="profile-avatar">
           <BitcoinIcon size={32} />
         </div>
@@ -460,7 +460,7 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
       </div>
 
       {/* Balance card */}
-      <div className="balance-card">
+      <div data-testid="balance-card" className="balance-card">
         <p className="balance-label">{t('yourBalance')}</p>
         {((user.webauthnCount || 0) > 0 && (!webauthnSession || autoLocked)) ? (
           isMobile() || platformAuthAvail === false ? (
@@ -533,8 +533,8 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
       </div>
 
       {/* Feature grid */}
-      <div className="feature-grid">
-        <button className="feature-cell" onClick={onSend}>
+      <div data-testid="feature-grid" className="feature-grid">
+        <button data-testid="feature-send" className="feature-cell" onClick={onSend}>
           <div className="feature-icon-wrap send"><SendIcon size={20} /></div>
           <span className="feature-label">{t('send')}</span>
         </button>
@@ -703,12 +703,12 @@ function KycScreen({ token, user, onBack, onKycDone }) {
 
       {error && <p className="error-text kyc-error"><AlertCircleIcon size={14} /> {error}</p>}
 
-      <div className="kyc-card">
+      <div data-testid="kyc-card" className="kyc-card">
         {step === 1 && (
           <div className="kyc-form">
             <h4><FingerprintIcon size={18} /> {t('stepAadhaar')}</h4>
             <p className="kyc-desc">{t('enterAadhaar')}</p>
-            <input className="kyc-input" type="text" maxLength={12} value={aadhaar} onChange={e => setAadhaar(e.target.value.replace(/\D/g, ''))} placeholder="1234 5678 9012" />
+            <input data-testid="kyc-aadhaar" className="kyc-input" type="text" maxLength={12} value={aadhaar} onChange={e => setAadhaar(e.target.value.replace(/\D/g, ''))} placeholder="1234 5678 9012" />
             <button className="btn-primary" onClick={sendAadhaarOtp} disabled={loading || aadhaar.length !== 12}>
               {loading ? t('loading') : t('sendOtp')}
             </button>
@@ -854,20 +854,20 @@ function DepositScreen({ token, onBack }) {
         <h3>Deposit INR</h3>
         <div />
       </header>
-      <div className="deposit-card">
+      <div data-testid="deposit-card" className="deposit-card">
         {!method && !clientSecret && !upiData && (
           <>
             <p className="deposit-label">Amount</p>
             <div className="amount-input">
               <span className="currency">₹</span>
-              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" min="1" />
+              <input data-testid="deposit-amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" min="1" />
             </div>
             <p className="deposit-info">Choose payment method</p>
             <div className="deposit-methods-grid">
-              <button className="method-btn" onClick={() => { setMethod('upi'); startUpi(); }} disabled={loading || !amount}>
+              <button data-testid="deposit-upi" className="method-btn" onClick={() => { setMethod('upi'); startUpi(); }} disabled={loading || !amount}>
                 <WalletIcon size={24} /> UPI / QR Code
               </button>
-              <button className="method-btn" onClick={() => { setMethod('card'); startCard(); }} disabled={loading || !amount}>
+              <button data-testid="deposit-card-btn" className="method-btn" onClick={() => { setMethod('card'); startCard(); }} disabled={loading || !amount}>
                 <CreditCardIcon size={24} /> Card / NetBanking
               </button>
             </div>
@@ -960,7 +960,7 @@ function SendScreen({ token, user, onBack }) {
             <div className="review-row total"><span>Total</span><span>{formatCurrency((parseFloat(amount) + parseFloat(fee || 0)).toFixed(2), 'INR')}</span></div>
           </div>
           {error && <p className="error-text"><InfoIcon size={14} /> {error}</p>}
-          <button className="btn-primary" onClick={handleSend} disabled={loading}>
+          <button data-testid="send-confirm" className="btn-primary" onClick={handleSend} disabled={loading}>
             {loading ? 'Sending...' : <><LockIcon size={16} /> Confirm & Send</>}
           </button>
           <p className="send-footer-note"><ShieldIcon size={12} /> Secured with 256-bit encryption</p>
@@ -976,7 +976,7 @@ function SendScreen({ token, user, onBack }) {
         <h3>Send Money</h3>
         <div />
       </header>
-      <div className="send-card">
+      <div data-testid="send-card" className="send-card">
         {beneficiaries.length > 0 && (
           <div className="form-group">
             <label>Saved Recipients</label>
@@ -1025,18 +1025,18 @@ function SendScreen({ token, user, onBack }) {
         )}
         <div className="form-group">
           <label><GlobeIcon size={14} /> Recipient Name</label>
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Recipient name" />
+          <input data-testid="send-recipient" type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Recipient name" />
         </div>
         <div className="form-group">
           <label>Amount (balance: {formatCurrency(user.balance || 0, 'INR')})</label>
           <div className="amount-input">
             <span className="currency">₹</span>
-            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" min="1" />
+            <input data-testid="send-amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" min="1" />
           </div>
         </div>
         <div className="form-group">
           <label>Send as</label>
-          <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+          <select data-testid="send-currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
             <option value="inr">INR — Indian Rupee</option>
             <option value="usd">USD — US Dollar</option>
             <option value="eur">EUR — Euro</option>
@@ -1060,7 +1060,7 @@ function SendScreen({ token, user, onBack }) {
           </div>
         </div>
         {error && <p className="error-text"><InfoIcon size={14} /> {error}</p>}
-        <button className="btn-primary" onClick={handleReview} disabled={!amount || !recipient}>
+        <button data-testid="send-review" className="btn-primary" onClick={handleReview} disabled={!amount || !recipient}>
           <SendIcon size={18} /> Review Payment
         </button>
       </div>

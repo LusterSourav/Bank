@@ -1,67 +1,127 @@
-import { TOTP } from 'otpauth';
+import{TOTP, Secret}from 'otpauth';
+
+
+
 import QRCode from 'qrcode';
 import crypto from 'crypto';
+
+
+
 import bcrypt from 'bcrypt';
 
-const APP_NAME = 'Sendly';
-const BCRYPT_ROUNDS = 10;
+const APP_NAME ='Sendly';
+const BCRYPT_ROUNDS= 10;
 const BACKUP_CODE_COUNT = 10;
-const BACKUP_CODE_BYTES = 5; // 5 bytes = 10 hex chars → formatted as XXXX-XXXX
 
-export function generateSecret(userId) {
-  const secret = crypto.randomBytes(20).toString('base64url');
-  const totp = new TOTP({
+
+
+
+
+
+const BACKUP_CODE_BYTES=5;// 5 bytes = 10 hex chars → formatted as XXXX-XXXX
+
+export function generateSecret(userId){
+  const s=new Secret({size: 20});
+  const totp=new TOTP({
+
+
+
     issuer: APP_NAME,
     label: userId,
-    secret,
+    secret: s,
     digits: 6,
     period: 30,
   });
-  return { secret, url: totp.toString() };
+  return{secret: s.base32, url: totp.toString() };
+
+
+
 }
 
-// ponytail: SVG avoids node-canvas dependency, works in Vercel serverless
-export async function generateQrDataUrl(url) {
-  const svg = await QRCode.toString(url, { type: 'svg', width: 240, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+//svg avoids node-canvas dep, works in vercel serverless
+export async function generateQrDataUrl(url){
+
+
+
+
+
+
+  const svg= await QRCode.toString(url, {type: 'svg', width: 240,margin: 2,color:{dark: '#000000',light: '#ffffff' }});
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 }
 
-export function verifyToken(secret, token) {
-  const totp = new TOTP({
+export function verifyToken(secret,token){
+
+
+
+  const totp =new TOTP({
+
+
+
+
+
+
     issuer: APP_NAME,
     label: 'verify',
     secret,
     digits: 6,
     period: 30,
   });
-  const delta = totp.validate({ token, window: 1 });
+  const delta= totp.validate({ token,window: 1 });
   return delta !== null;
+
+
+
+
+
+
 }
 
-// generates 10 single-use backup codes in XXXX-XXXX format
-// codes returned as plaintext (shown once to user), hashes stored via bcrypt
-// ponytail: bcrypt cost 10, fast enough for batch gen, slow enough for offline attacks
+
+
+
+//generates 10 single-use backup codes in XXXX-XXXX format
+//codes returned as plaintext (shown once to user), hashes stored via bcrypt
+//bcrypt cost 10 — fast for batch, slow enough offline
 export async function generateBackupCodes() {
-  const codes = [];
-  const hashes = [];
-  for (let i = 0; i < BACKUP_CODE_COUNT; i++) {
-    const bytes = crypto.randomBytes(BACKUP_CODE_BYTES);
-    const code = bytes.toString('hex').toUpperCase().replace(/(.{4})/g, '$1-').slice(0, -1);
+
+
+
+
+
+
+  const codes= [];
+  const hashes= [];
+  for (let i= 0;i < BACKUP_CODE_COUNT;i++) {
+    const bytes=crypto.randomBytes(BACKUP_CODE_BYTES);
+
+
+
+    const code=bytes.toString('hex').toUpperCase().replace(/(.{4})/g, '$1-').slice(0,-1);
     codes.push(code);
-    hashes.push(await bcrypt.hash(code, BCRYPT_ROUNDS));
+
+
+
+    hashes.push(await bcrypt.hash(code,BCRYPT_ROUNDS));
   }
-  return { codes, hashes };
+  return { codes,hashes };
 }
 
-// ponytail: iterates over all unused codes, bcrypt.compare is slow so no timing leak per code
+// bcrypt is slow so no timing leak per code — iterating all unused is fine
 // caller must mark the matched code as used
-export async function verifyBackupCode(user, code) {
-  const normalized = code.toUpperCase().trim();
-  for (const entry of user.backupCodes || []) {
-    if (entry.used) continue;
-    if (await bcrypt.compare(normalized, entry.hash)) {
+export async function verifyBackupCode(user,code){
+  const normalized=code.toUpperCase().trim();
+  for(const entry of user.backupCodes ||[]){
+    if(entry.used)continue;
+    if(await bcrypt.compare(normalized,entry.hash)){
       return true;
     }
   }
   return false;
+
+
+
+
+
+
 }

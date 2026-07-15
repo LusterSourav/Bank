@@ -77,6 +77,14 @@ async function inrToUsdc(inrAmount){
 
 }
 
+// ponytail: EURC uses USD→EUR rate via hardcoded multiplier. Oracle upgrade when liquidity justifies it.
+const STABLE_RATES = { usdc: 1, usdt: 1, eurc: 1.05 };
+
+async function inrToStable(inrAmount, token = 'usdc') {
+  const usdcVal = await inrToUsdc(inrAmount);
+  return parseFloat((usdcVal * (STABLE_RATES[token] || 1)).toFixed(6));
+}
+
 // in-memory rate limiter. dies on restart, good enough
 const rateLimit={};
 const checkRate =(key, limit=10,windowMs= 60000) =>{
@@ -581,8 +589,9 @@ router.post('/onramp', auth, async (req,res) => {
   try{
 
 
-    const { amount} = req.body;
+    const { amount, token = 'usdc' } = req.body;
     if(!amount || amount <= 0)return res.status(400).json({error: 'invalid amount'});
+    if (!config.tokens[token]) return res.status(400).json({error: 'unsupported token'});
 
 
 
@@ -635,7 +644,7 @@ router.post('/onramp', auth, async (req,res) => {
     const{relayTx }=await import('./relayer.js');
 
 
-    const usdcAmount =await inrToUsdc(amount);
+    const stableAmount =await inrToStable(amount, token);
 
 
 
@@ -649,13 +658,14 @@ router.post('/onramp', auth, async (req,res) => {
         'function transfer(address to, uint256 value) returns (bool)',
       ]);
 
-      const data=iface.encodeFunctionData('transfer',[user.walletAddress,ethers.parseUnits(String(usdcAmount),6)]);
+      const t = config.tokens[token];
+      const data=iface.encodeFunctionData('transfer',[user.walletAddress,ethers.parseUnits(String(stableAmount), t.decimals)]);
 
       user.balance -= amount;
 
       await user.save();
 
-      const txHash=await relayTx(config.usdcAddress, data);
+      const txHash=await relayTx(t.address, data);
 
 
       tx.status= 'completed';
@@ -664,7 +674,7 @@ router.post('/onramp', auth, async (req,res) => {
       await tx.save();
 
 
-      res.json({txHash,walletAddress: user.walletAddress,amount: usdcAmount});
+      res.json({txHash,walletAddress: user.walletAddress, amount: stableAmount, token});
     }catch(err){
 
       tx.status= 'failed';
@@ -699,7 +709,7 @@ router.post('/remit',auth,async(req,res)=>{
   try{
 
 
-    const { receiverAddress,amount, lockPeriod = 259200 }= req.body;
+    const { receiverAddress, amount, lockPeriod = 259200, token = 'usdc' }= req.body;
 
     if(!receiverAddress || !amount) return res.status(400).json({ error: 'missing receiver or amount'});
 
@@ -733,12 +743,13 @@ router.post('/remit',auth,async(req,res)=>{
       const{ethers} = await import('ethers');
 
       const { relayTx} =await import('./relayer.js');
+      // ponytail: remit always uses USDC (escrow contract is USDC-specific). multi-token escrow when demand exists.
       const usdcAmount = await inrToUsdc(amount);
       const iface =new ethers.Interface([
         'function createRemittance(address receiver, uint256 amount, uint256 lockPeriod) returns (bytes32)',
       ]);
 
-      const data=iface.encodeFunctionData('createRemittance', [receiverAddress,ethers.parseUnits(String(usdcAmount),6),lockPeriod]);
+      const data=iface.encodeFunctionData('createRemittance', [receiverAddress, ethers.parseUnits(String(usdcAmount),6), lockPeriod]);
 
 
 
@@ -746,7 +757,7 @@ router.post('/remit',auth,async(req,res)=>{
       const txHash=await relayTx(config.remittanceEscrowAddress,data);
 
 
-      res.json({txHash,receiverAddress, amount: usdcAmount,lockPeriod});
+      res.json({txHash,receiverAddress, amount: usdcAmount, token: 'usdc', lockPeriod});
 
     }catch(err) {
 
@@ -874,6 +885,21 @@ router.post('/zk/verify',auth,async(req,res)=>{
 
 });
 
+
+// recover wallet from backup share (MPC — relayer share + user backup share)
+router.post('/recover-wallet', auth, async (req, res) => {
+  try {
+    const { backupShare } = req.body;
+    if (!backupShare) return res.status(400).json({ error: 'backupShare required' });
+    const { recoverWallet } = await import('./erebor.js');
+    const w = await recoverWallet(req.userId, backupShare);
+    await User.updateOne({ firebaseUid: req.userId }, { walletAddress: w.address, ereborWalletId: w.walletId });
+    res.json({ walletAddress: w.address });
+  } catch (err) {
+    console.error('recover-wallet error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;
 

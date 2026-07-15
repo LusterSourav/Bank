@@ -9,6 +9,7 @@ const abi=[
   'event EscrowReleased(bytes32 indexed escrowId)',
   'event EscrowDisputed(bytes32 indexed escrowId)',
   'event EscrowRefunded(bytes32 indexed escrowId)',
+  'function refund(bytes32 escrowId)',
 ];
 
 
@@ -17,7 +18,6 @@ export function startWatching(){
   const provider =new ethers.JsonRpcProvider(config.polygonRpcUrl);
   const contract =new ethers.Contract(config.remittanceEscrowAddress, abi, provider);
   let lastBlock;
-
 
 
 
@@ -80,5 +80,21 @@ export function startWatching(){
 
   },15000);
 
+  // ponytail: checks and refunds expired escrows every 60s. avoids separate cron infra.
+  setInterval(async () => {
+    try {
+      const { Escrow } = await import('./models.js');
+      const { relayTx } = await import('./relayer.js');
+      const expired = await Escrow.find({ status: 'created', lockUntil: { $lte: new Date() } });
+      for (const e of expired) {
+        const iface = new ethers.Interface(['function refund(bytes32 escrowId)']);
+        const data = iface.encodeFunctionData('refund', [e.escrowId]);
+        await relayTx(config.remittanceEscrowAddress, data);
+        e.status = 'refunded';
+        await e.save();
+      }
+    } catch (err) {
+      console.error('refund check error:', err.message);
+    }
+  }, 60000);
 }
-

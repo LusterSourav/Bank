@@ -10,6 +10,7 @@ import WalletScreen from './screens/WalletScreen.jsx';
 import RemitScreen from './screens/RemitScreen.jsx';
 import ClaimScreen from './screens/ClaimScreen.jsx';
 import ZKScreen from './screens/ZKScreen.jsx';
+import RecoveryScreen from './screens/RecoveryScreen.jsx';
 import {
   BitcoinIcon,
   SendIcon,
@@ -1957,9 +1958,10 @@ export default function App() {
     case 'deposit': return <DepositScreen token={token} onBack={refreshUser} />;
     case 'send': return <SendScreen token={token} user={user} onBack={refreshUser} />;
     case 'history': return <HistoryScreen token={token} onBack={() => setScreen('dashboard')} />;
-    case 'wallet': return <WalletScreen user={user} token={token} onBack={() => setScreen('dashboard')} onRemit={() => setScreen('remit')} />;
+    case 'wallet': return <WalletScreen user={user} token={token} onBack={() => setScreen('dashboard')} onRemit={() => setScreen('remit')} onRecover={() => setScreen('recover')} />;
     case 'remit': return <RemitScreen user={user} token={token} onBack={() => setScreen('dashboard')} />;
     case 'claim': return <ClaimScreen user={user} token={token} onBack={() => setScreen('dashboard')} />;
+    case 'recover': return <RecoveryScreen token={token} onBack={() => setScreen('wallet')} onRecovered={() => setScreen('wallet')} />;
     case 'zk': return <ZKScreen user={user} token={token} onBack={() => setScreen('settings')} />;
     case 'settings': return <SettingsScreen user={user} token={token} onBack={() => setScreen('dashboard')} onLogout={handleLogout} onKyc={() => setScreen('kyc')} onZk={() => setScreen('zk')} onRefreshUser={refreshUser} />;
     default: return <LoginScreen onGoogleLogin={handleGoogleLogin} onEmailLogin={handleEmailLogin} isSignUp={isSignUp} setIsSignUp={setIsSignUp} error={authError} onForgotPassword={() => setScreen('forgotPassword')} />;

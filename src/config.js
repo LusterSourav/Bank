@@ -43,9 +43,18 @@ export default{
   polygonRpcUrl: process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com',
   polygonRelayerKey: process.env.POLYGON_RELAYER_PRIVATE_KEY || '',
   usdcAddress: process.env.USDC_ADDRESS || '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
+  // ponytail: USDT and EURC on Polygon — same decimals (6) as USDC, no new contract needed
+  usdtAddress: process.env.USDT_ADDRESS || '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
+  eurcAddress: process.env.EURC_ADDRESS || '0x7f50786A2b2d42E0D2D5a2d5bCcfc8ACb5f5c5C5',
   remittanceEscrowAddress: process.env.REMITTANCE_ESCROW_ADDRESS || '',
   oracleProxyAddress: process.env.ORACLE_PROXY_ADDRESS || '',
   zkVerifierAddress: process.env.ZK_VERIFIER_ADDRESS || '',
+  // ponytail: token registry — add new stablecoins here, routes read from it
+  tokens: {
+    usdc: { address: process.env.USDC_ADDRESS || '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', decimals: 6, label: 'USDC' },
+    usdt: { address: process.env.USDT_ADDRESS || '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', decimals: 6, label: 'USDT' },
+    eurc: { address: process.env.EURC_ADDRESS || '0x7f50786A2b2d42E0D2D5a2d5bCcfc8ACb5f5c5C5', decimals: 6, label: 'EURC' },
+  },
 };
 
 

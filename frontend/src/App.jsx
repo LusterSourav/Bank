@@ -6,6 +6,10 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { formatCurrency } from './utils/formatCurrency';
 import { getInitial, getColor } from './utils/avatar';
+import WalletScreen from './screens/WalletScreen.jsx';
+import RemitScreen from './screens/RemitScreen.jsx';
+import ClaimScreen from './screens/ClaimScreen.jsx';
+import ZKScreen from './screens/ZKScreen.jsx';
 import {
   BitcoinIcon,
   SendIcon,
@@ -34,6 +38,9 @@ import {
   EditIcon,
   AlertCircleIcon,
   QrCodeIcon,
+  VerifyIcon,
+  CopyIcon,
+  ExchangeIcon,
 } from '@bitcoin-design/bitcoin-icons-react/outline';
 import { auth, googleProvider } from './firebase';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
@@ -269,7 +276,7 @@ function ResetPasswordScreen({ oobCode, onBack }) {
   );
 }
 
-function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings, onKyc, onLogout, platformAuthAvail }) {
+function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings, onKyc, onLogout, onWallet, onClaim, platformAuthAvail }) {
   const { t } = useTranslation();
   const [recentTxs, setRecentTxs] = useState([]);
   const [showLogout, setShowLogout] = useState(false);
@@ -538,6 +545,14 @@ function DashboardScreen({ user, token, onSend, onDeposit, onHistory, onSettings
         <button className="feature-cell" onClick={onHistory}>
           <div className="feature-icon-wrap history"><ClockIcon size={20} /></div>
           <span className="feature-label">{t('history')}</span>
+        </button>
+        <button className="feature-cell" onClick={onWallet}>
+          <div className="feature-icon-wrap settings"><WalletIcon size={20} /></div>
+          <span className="feature-label">Wallet</span>
+        </button>
+        <button className="feature-cell" onClick={onClaim}>
+          <div className="feature-icon-wrap settings"><ReceiveIcon size={20} /></div>
+          <span className="feature-label">Claim</span>
         </button>
         <button className="feature-cell" onClick={onSettings}>
           <div className="feature-icon-wrap settings"><GearIcon size={20} /></div>
@@ -1150,7 +1165,7 @@ function HistoryScreen({ token, onBack }) {
   );
 }
 
-function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser }) {
+function SettingsScreen({ user, onBack, onLogout, token, onKyc, onZk, onRefreshUser }) {
   const { t, i18n: i18nInst } = useTranslation();
   const [showBalance, setShowBalance] = useState(() => localStorage.getItem('showBalance') !== 'false');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') !== 'false');
@@ -1367,6 +1382,16 @@ function SettingsScreen({ user, onBack, onLogout, token, onKyc, onRefreshUser })
             <span className={`settings-badge ${user.kyc === 'verified' ? 'verified' : 'pending'}`}>
               {user.kyc === 'verified' ? '✓' : '→'}
             </span>
+          </div>
+          <div className="settings-row" style={{ cursor: 'pointer' }} onClick={onZk}>
+            <div className="settings-row-left">
+              <VerifyIcon size={18} />
+              <div>
+                <span className="settings-row-label">Privacy & Verification</span>
+                <span className="settings-row-value">ZK proofs for age & country</span>
+              </div>
+            </div>
+            <span className="settings-badge">{user.zkStatus?.ageVerified || user.zkStatus?.countryVerified ? '✓' : '→'}</span>
           </div>
           <div className="settings-row">
             <div className="settings-row-left">
@@ -1927,12 +1952,16 @@ export default function App() {
     case 'login': return <LoginScreen onGoogleLogin={handleGoogleLogin} onEmailLogin={handleEmailLogin} isSignUp={isSignUp} setIsSignUp={setIsSignUp} error={authError} onForgotPassword={() => setScreen('forgotPassword')} />;
     case 'forgotPassword': return <ForgotPasswordScreen onBack={() => setScreen('login')} />;
     case 'resetPassword': return <ResetPasswordScreen oobCode={resetOobCode} onBack={() => setScreen('login')} />;
-    case 'dashboard': return <DashboardScreen user={user} token={token} platformAuthAvail={platformAuthAvail} onSend={() => setScreen('send')} onDeposit={() => setScreen('deposit')} onHistory={() => setScreen('history')} onSettings={() => setScreen('settings')} onKyc={() => setScreen('kyc')} onLogout={handleLogout} />;
+    case 'dashboard': return <DashboardScreen user={user} token={token} platformAuthAvail={platformAuthAvail} onSend={() => setScreen('send')} onDeposit={() => setScreen('deposit')} onHistory={() => setScreen('history')} onWallet={() => setScreen('wallet')} onClaim={() => setScreen('claim')} onSettings={() => setScreen('settings')} onKyc={() => setScreen('kyc')} onLogout={handleLogout} />;
     case 'kyc': return <KycScreen token={token} user={user} onBack={() => setScreen('settings')} onKycDone={refreshUser} />;
     case 'deposit': return <DepositScreen token={token} onBack={refreshUser} />;
     case 'send': return <SendScreen token={token} user={user} onBack={refreshUser} />;
     case 'history': return <HistoryScreen token={token} onBack={() => setScreen('dashboard')} />;
-    case 'settings': return <SettingsScreen user={user} token={token} onBack={() => setScreen('dashboard')} onLogout={handleLogout} onKyc={() => setScreen('kyc')} onRefreshUser={refreshUser} />;
+    case 'wallet': return <WalletScreen user={user} token={token} onBack={() => setScreen('dashboard')} onRemit={() => setScreen('remit')} />;
+    case 'remit': return <RemitScreen user={user} token={token} onBack={() => setScreen('dashboard')} />;
+    case 'claim': return <ClaimScreen user={user} token={token} onBack={() => setScreen('dashboard')} />;
+    case 'zk': return <ZKScreen user={user} token={token} onBack={() => setScreen('settings')} />;
+    case 'settings': return <SettingsScreen user={user} token={token} onBack={() => setScreen('dashboard')} onLogout={handleLogout} onKyc={() => setScreen('kyc')} onZk={() => setScreen('zk')} onRefreshUser={refreshUser} />;
     default: return <LoginScreen onGoogleLogin={handleGoogleLogin} onEmailLogin={handleEmailLogin} isSignUp={isSignUp} setIsSignUp={setIsSignUp} error={authError} onForgotPassword={() => setScreen('forgotPassword')} />;
   }
 }

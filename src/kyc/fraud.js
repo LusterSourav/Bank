@@ -1,6 +1,4 @@
 // ponytail: in-memory velocity + fraud checks. Move to Redis for production.
-import { validateAadhaar } from './provider.js';
-
 const store = {};
 
 function cleanup(key, windowMs) {
@@ -46,8 +44,5 @@ export function checkKycTiming(startTime, endTime) {
   return { ok: true, seconds };
 }
 
-export function validateAadhaarChecksum(uid) {
-  return validateAadhaar(uid);
-}
 
 

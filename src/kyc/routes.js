@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { auth } from '../middleware.js';
 import { User, Otp } from '../models.js';
-import { generateAadhaarOtp, verifyAadhaarOtp, verifyPan, maskAadhaar } from './provider.js';
-import { checkKycVelocity, checkKycTiming, validateAadhaarChecksum } from './fraud.js';
+import { generateAadhaarOtp, verifyAadhaarOtp, verifyPan, maskAadhaar, validateAadhaar } from './provider.js';
+import { checkKycVelocity, checkKycTiming } from './fraud.js';
 import { crossVerify } from './nameMatch.js';
 import { generateOtp, hashOtp, verifyOtpHash, otpExpiry } from '../otp.js';
 import { sendEmailNotification } from '../notifications.js';
@@ -35,7 +35,7 @@ router.post('/kyc/aadhaar/send-otp', auth, async (req, res) => {
     store.append(`kyc:ip:${user._id}`, { ip: req.ip, score: ipResult.score, country: ipResult.country, asn: ipResult.asn });
 
     // Aadhaar checksum
-    if (!validateAadhaarChecksum(aadhaarNumber)) {
+    if (!validateAadhaar(aadhaarNumber)) {
       return res.status(400).json({ error: 'Invalid Aadhaar number' });
     }
 
@@ -85,9 +85,12 @@ router.post('/kyc/aadhaar/verify-otp', auth, async (req, res) => {
 // Step 3: Verify PAN
 router.post('/kyc/pan/verify', auth, async (req, res) => {
   try {
-    const { panNumber, name, dob } = req.body;
+    const { panNumber, name } = req.body;
     if (!panNumber || !name) return res.status(400).json({ error: 'PAN number and name required' });
 
+    // ponytail: use Aadhaar-verified DOB for PAN match — avoids asking user twice
+    const user = await User.findOne({ firebaseUid: req.userId });
+    const dob = user.kyc?.verifiedDob || '';
     const panResult = await verifyPan(panNumber.toUpperCase(), name, dob);
     if (!panResult.valid) return res.status(400).json({ error: panResult.status });
 

@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import config from '../config.js';
 
 // ── Aadhaar utilities (pure, no API calls) ──
@@ -76,21 +75,8 @@ async function sandboxFetch(path, body) {
   return json;
 }
 
-// ── Eko auth helpers ──
-
-function ekoSecretKey() {
-  const encoded = Buffer.from(config.eko.accessKey).toString('base64');
-  const ts = Date.now().toString();
-  const sig = crypto.createHmac('sha256', Buffer.from(encoded, 'base64')).update(ts).digest('base64');
-  return { secretKey: sig, timestamp: ts };
-}
-
 function hasSandboxKeys() {
   return !!(config.sandbox.apiKey && config.sandbox.apiSecret);
-}
-
-function hasEkoKeys() {
-  return !!(config.eko.developerKey && config.eko.accessKey);
 }
 
 // ── Aadhaar OTP (Sandbox) ──
@@ -176,66 +162,49 @@ export async function verifyAadhaarOtp(referenceId, otp) {
   };
 }
 
-// ── PAN verification (Eko PAN Lite) ──
+// ── PAN verification (Sandbox) ──
 
 export async function verifyPan(pan, name, dob) {
   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) {
     return { valid: false, status: 'INVALID_FORMAT' };
   }
 
-  if (!hasEkoKeys()) {
+  if (!hasSandboxKeys()) {
     // ponytail: mock fallback
     const nameMatch = name && name.length > 2;
     const dobMatch = !!dob;
     return {
-      valid: true,
-      status: 'VALID',
-      nameMatches: nameMatch,
-      dobMatches: dobMatch,
-      aadhaarLinked: true,
-      category: 'INDIVIDUAL',
+      valid: true, status: 'VALID',
+      nameMatches: nameMatch, dobMatches: dobMatch,
+      aadhaarLinked: true, category: 'INDIVIDUAL',
       panMasked: maskPan(pan),
     };
   }
 
-  const { secretKey, timestamp } = ekoSecretKey();
+  // ponytail: normalize DOB separators to Sandbox DD/MM/YYYY format
+  const normalizedDob = dob ? dob.replace(/[-]/g, '/') : '';
 
-  const res = await fetch('https://staging.eko.in:25004/ekoapi/v3/tools/kyc/pan-lite', {
-    method: 'POST',
-    headers: {
-      'developer_key': config.eko.developerKey,
-      'secret-key': secretKey,
-      'secret-key-timestamp': timestamp,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      initiator_id: config.eko.initiatorId,
-      pan_number: pan,
-      name,
-      dob: dob || '',
-      source: 'API',
-    }),
+  const res = await sandboxFetch('/kyc/pan/verify', {
+    '@entity': 'in.co.sandbox.kyc.pan_verification.request',
+    pan,
+    name_as_per_pan: name,
+    date_of_birth: normalizedDob,
+    consent: 'Y',
+    reason: 'KYC verification for user onboarding',
   });
 
-  const json = await res.json();
-
-  // ponytail: UAT always returns name_match=N, production returns real match
-  if (json.status === 'FAILURE' || json.responseCode !== 0) {
-    return { valid: false, status: json.message || 'PAN verification failed' };
-  }
-
-  const data = json.data || {};
-  const panValid = data.pan_status === 'E' || data.status === 'VALID';
-  const nameMatches = data.name_match === 'Y';
-  const dobMatches = data.dob_match === 'Y';
+  const data = res.data || {};
+  const panValid = data.status === 'valid';
+  const nameMatches = data.name_as_per_pan_match === true;
+  const dobMatches = data.date_of_birth_match === true;
 
   return {
     valid: panValid,
-    status: panValid ? 'VALID' : data.pan_status || 'INVALID',
+    status: panValid ? 'VALID' : (data.status || 'INVALID').toUpperCase(),
     nameMatches,
     dobMatches,
-    aadhaarLinked: data.aadhaar_seeding_status === 'Y',
-    category: 'INDIVIDUAL',
+    aadhaarLinked: data.aadhaar_seeding_status === 'y',
+    category: data.category || 'UNKNOWN',
     panMasked: maskPan(pan),
   };
 }

@@ -27,11 +27,7 @@ export default {
     apiKey: process.env.SANDBOX_API_KEY || '',
     apiSecret: process.env.SANDBOX_API_SECRET || '',
   },
-  eko: {
-    developerKey: process.env.EKO_DEVELOPER_KEY || '',
-    accessKey: process.env.EKO_ACCESS_KEY || '',
-    initiatorId: process.env.EKO_INITIATOR_ID || '',
-  },
+
   // AES-256-GCM key for TOTP secrets at rest — 32 bytes as 64 hex chars
   totpEncryptionKey: process.env.TOTP_ENCRYPTION_KEY || '',
   // JWT secret for TOTP session tokens — min 32 chars

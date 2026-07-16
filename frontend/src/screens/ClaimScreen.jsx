@@ -1,35 +1,42 @@
 import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ArrowLeftIcon, CheckIcon, ClockIcon } from '@bitcoin-design/bitcoin-icons-react/outline';
+import {useTranslation}from 'react-i18next';
+import {ArrowLeftIcon, CheckIcon, ClockIcon} from '@bitcoin-design/bitcoin-icons-react/outline';
 
-const API = import.meta.env.VITE_API_URL;
+const API=import.meta.env.VITE_API_URL;
 
-export default function ClaimScreen({ token, user, onBack }) {
+export default function ClaimScreen({token,user,onBack }){
   const { t } = useTranslation();
-  const [escrows, setEscrows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const[escrows, setEscrows] =useState([]);
+  const [loading, setLoading]= useState(true);
 
-  useEffect(() => {
+  useEffect(()=> {
+
+
     if (!user.walletAddress) return;
     // ponytail: query Escrow collection from backend — chain events are polled by watcher
-    apiFetch('/escrows/pending').then(d => { setEscrows(d); setLoading(false); }).catch(() => setLoading(false));
+    apiFetch('/escrows/pending').then(d => {setEscrows(d); setLoading(false); }).catch(()=> setLoading(false));
   }, [user.walletAddress]);
 
   async function apiFetch(path, opts = {}) {
-    const res = await fetch(`${API}${path}`, {
+
+    const res=await fetch(`${API}${path}`,{
       ...opts,
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts.headers },
+      headers:{ 'Content-Type': 'application/json', ...(token ?{Authorization: `Bearer ${token}`}:{}),...opts.headers },
     });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || 'request failed');
     return d;
+
+
   }
 
   const claim = async (escrowId) => {
     try {
-      await apiFetch('/claim', { method: 'POST', body: JSON.stringify({ escrowId }) });
+      await apiFetch('/claim', {method: 'POST',body: JSON.stringify({ escrowId }) });
       setEscrows(prev => prev.filter(e => e.escrowId !== escrowId));
     } catch (e) { alert(e.message); }
+
+
   };
 
   return (
@@ -43,12 +50,12 @@ export default function ClaimScreen({ token, user, onBack }) {
       {loading && <p className="empty-state">Loading...</p>}
 
       {!loading && escrows.length === 0 && (
-        <div className="empty-state"><ClockIcon size={16} /> <span>No pending escrows</span></div>
+        <div className="empty-state"><ClockIcon size={16}/> <span>No pending escrows</span></div>
       )}
 
       <div className="tx-list">
         {escrows.map(e => (
-          <div key={e.escrowId} className="tx-item">
+          <div key={e.escrowId}className="tx-item">
             <div className="tx-info">
               <div className="tx-details">
                 <span className="tx-type">Incoming</span>

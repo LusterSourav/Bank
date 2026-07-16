@@ -3,25 +3,30 @@ import { ArrowLeftIcon, KeyIcon, InfoIcon } from '@bitcoin-design/bitcoin-icons-
 
 const API = import.meta.env.VITE_API_URL;
 
-export default function RecoveryScreen({ token, onBack, onRecovered }) {
-  const [backupShare, setBackupShare] = useState('');
-  const [loading, setLoading] = useState(false);
+export default function RecoveryScreen({token, onBack, onRecovered }){
+  const[backupShare,setBackupShare] =useState('');
+  const [loading, setLoading]= useState(false);
   const [error, setError] = useState('');
-  const [done, setDone] = useState(false);
+  const[done,setDone]=useState(false);
 
-  const handleRecover = async () => {
-    if (!backupShare) return;
+  const handleRecover= async()=> {
+
+
+    if (!backupShare)return;
     setLoading(true); setError('');
     try {
-      const res = await fetch(`${API}/recover-wallet`, {
+      const res =await fetch(`${API}/recover-wallet`, {
+
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ backupShare }),
+        body: JSON.stringify({backupShare }),
       });
-      const data = await res.json();
+      const data =await res.json();
       if (!res.ok) throw new Error(data.error);
       setDone(true);
       onRecovered(data.walletAddress);
+
+
     } catch (e) { setError(e.message); }
     setLoading(false);
   };
@@ -38,6 +43,8 @@ export default function RecoveryScreen({ token, onBack, onRecovered }) {
       </div>
     );
   }
+
+
 
   return (
     <div className="dashboard page-enter">
@@ -59,12 +66,13 @@ export default function RecoveryScreen({ token, onBack, onRecovered }) {
           />
         </div>
 
-        {error && <p className="error-text"><InfoIcon size={14} /> {error}</p>}
+        {error && <p className="error-text"><InfoIcon size={14} />{error}</p>}
 
         <button className="btn-primary" onClick={handleRecover} disabled={loading || !backupShare}>
-          {loading ? 'Recovering...' : <><KeyIcon size={16} /> Recover Wallet</>}
+          {loading ? 'Recovering...' : <><KeyIcon size={16}/> Recover Wallet</>}
         </button>
       </div>
     </div>
   );
 }
+

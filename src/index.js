@@ -1,5 +1,4 @@
-// Local dev entry. Imports the Express app, connects to MongoDB, then listens.
-// For Vercel, see api/index.js instead.
+// local dev entry — for vercel see api/index.js
 import app from './app.js';
 
 import connect from './db.js';
@@ -9,6 +8,4 @@ import { startWatching } from './watcher.js';
 
 await connect();
 startWatching();
-app.listen(config.port, ()=> console.log(`listening on ${config.port}`));
-
-
+app.listen(config.port, () => console.log(`listening on ${config.port}`));

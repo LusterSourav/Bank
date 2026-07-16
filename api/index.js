@@ -8,7 +8,7 @@ let connected = false;
 
 
 export default async function handler(req, res){
-  if(!connected) {await connect();connected =true; }
+  if(!connected) {await connect();connected=true;}
   app(req,res);
 }
 

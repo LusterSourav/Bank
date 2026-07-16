@@ -1,0 +1,2 @@
+[workspace]
+members = ["packages/verify_age", "packages/verify_country"]

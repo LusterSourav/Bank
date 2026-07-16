@@ -1,46 +1,56 @@
-import { useState } from 'react';
+import {useState}from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeftIcon, ShieldIcon, CheckIcon } from '@bitcoin-design/bitcoin-icons-react/outline';
+import{ArrowLeftIcon, ShieldIcon,CheckIcon} from '@bitcoin-design/bitcoin-icons-react/outline';
+import {generateProof } from '../zk.js';
 
-const API = import.meta.env.VITE_API_URL;
+const API= import.meta.env.VITE_API_URL;
 
 export default function ZKScreen({ token, user, onBack }) {
-  const { t } = useTranslation();
-  const [type, setType] = useState('');
+  const{ t }= useTranslation();
+  const [type,setType] =useState('');
   const [step, setStep] = useState('select'); // select | proving | done
-  const [error, setError] = useState('');
 
-  async function apiFetch(path, opts = {}) {
+
+  const[error,setError]= useState('');
+
+  async function apiFetch(path, opts={}){
     const res = await fetch(`${API}${path}`, {
       ...opts,
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts.headers },
     });
+
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || 'request failed');
     return d;
   }
 
   // ponytail: stub — real NoirJS proving will happen here
-  // the browser loads noir_wasm, takes the ID hash, generates Groth16 proof
-  // for now we simulate with a dummy proof
-  const startProof = async (proofType) => {
+  //the browser loads noir_wasm, takes the ID hash, generates Groth16 proof
+  //for now we simulate with a dummy proof
+  const startProof=async(proofType) => {
+
+
     setType(proofType);
     setStep('proving');
     setError('');
 
     try {
-      // ponytail: placeholder — NoirJS integration in next sprint
-      // const proof = await generateProof(proofType, idData);
-      const dummyProof = '0x' + 'ab'.repeat(64);
-      await apiFetch('/zk/verify', {
+      const inputs = proofType === 'age'
+        ?{age: 30, min_age: 18 }
+        : { country_code: 78, expected_code: 78}; // 78 = 'IN' as field element
+
+
+      const{ proof, publicInputs}=await generateProof(proofType === 'age' ? 'verify_age' : 'verify_country', inputs);
+      await apiFetch('/zk/verify',{
         method: 'POST',
-        body: JSON.stringify({ proof: dummyProof, type: proofType }),
+        body: JSON.stringify({proof, pubSignals: publicInputs,type: proofType }),
       });
       setStep('done');
     } catch (e) {
       setError(e.message);
       setStep('select');
     }
+
   };
 
   if (step === 'done') {
@@ -49,7 +59,7 @@ export default function ZKScreen({ token, user, onBack }) {
         <div className="success-card">
           <div className="success-icon"><CheckIcon size={40} /></div>
           <h2>Verified!</h2>
-          <p>Your {type} proof has been submitted and verified on-chain.</p>
+          <p>Your{type}proof has been submitted and verified on-chain.</p>
           <button className="btn-primary" onClick={onBack}>Done</button>
         </div>
       </div>
@@ -59,30 +69,30 @@ export default function ZKScreen({ token, user, onBack }) {
   return (
     <div className="dashboard page-enter">
       <header className="dash-header">
-        <button className="btn-ghost" onClick={onBack}><ArrowLeftIcon size={16} /> Back</button>
+        <button className="btn-ghost" onClick={onBack}><ArrowLeftIcon size={16}/> Back</button>
         <h3>ZK Verification</h3>
         <div />
       </header>
 
       <div className="kyc-card">
-        {step === 'select' && (
+        {step === 'select' &&(
           <>
             <p style={{ marginBottom: 16, color: 'var(--text-secondary)' }}>
               Prove your identity without sharing your documents. Select what to verify:
             </p>
             {error && <p className="error-text">{error}</p>}
-            <button className="method-btn" style={{ marginBottom: 12 }} onClick={() => startProof('age')} disabled={user.zkStatus?.ageVerified}>
+            <button className="method-btn" style={{marginBottom: 12}}onClick={()=> startProof('age')}disabled={user.zkStatus?.ageVerified}>
               <ShieldIcon size={24} /> {user.zkStatus?.ageVerified ? '✓ Age Verified' : 'Prove Age (18+)'}
             </button>
-            <button className="method-btn" onClick={() => startProof('country')} disabled={user.zkStatus?.countryVerified}>
-              <ShieldIcon size={24} /> {user.zkStatus?.countryVerified ? '✓ Country Verified' : 'Prove Country of Residence'}
+            <button className="method-btn" onClick={()=> startProof('country')} disabled={user.zkStatus?.countryVerified}>
+              <ShieldIcon size={24}/> {user.zkStatus?.countryVerified ? '✓ Country Verified' : 'Prove Country of Residence'}
             </button>
           </>
         )}
-        {step === 'proving' && (
+        {step === 'proving' &&(
           <div className="empty-state">
             <p>Generating {type} proof...</p>
-            <p style={{ fontSize: 12, marginTop: 8 }}>This runs in your browser — your data never leaves.</p>
+            <p style={{fontSize: 12,marginTop: 8}}>This runs in your browser — your data never leaves.</p>
           </div>
         )}
       </div>

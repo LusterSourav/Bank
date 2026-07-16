@@ -1,85 +1,44 @@
+// thin wrapper around the erebor rest api (self-hosted rust wallet)
 import config from './config.js';
 
-
-
-
-//thin wrapper around the erebor rest api (self-hosted rust wallet)
-const BASE=config.ereborUrl;
+const BASE= config.ereborUrl;
 
 async function ereborFetch(path,body){
-
-
-
-  const res =await fetch(`${BASE}${path}`,{
+  const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: { 'Content-Type': 'application/json'},
     body: JSON.stringify(body),
   });
-  if (!res.ok){
-    const err=await res.text();
-
-
-
-
-
-
+  if (!res.ok) {
+    const err =await res.text();
     throw new Error(`erebor: ${err}`);
   }
+
+
   return res.json();
 }
 
-
-
-
 export async function createWallet(uid) {
-  const {walletId,address}=await ereborFetch('/api/v1/wallet',{userId: uid });
+  const { walletId, address}=await ereborFetch('/api/v1/wallet', {userId: uid });
 
-
-
-  return {walletId,address};
+  return {walletId, address};
 }
 
-
-
-
-
-
-
-async function signTx(walletId,tx) {
-  const{signature}= await ereborFetch(`/api/v1/${walletId}/sign`,{txData: tx});
+async function signTx(walletId, tx) {
+  const{signature}= await ereborFetch(`/api/v1/${walletId}/sign`,{txData: tx });
   return signature;
+
+
 }
-
-
-
 
 // 2-of-3: relayer share + user backup share
-async function recoverWallet(uid,backupShare){
-
-
-
-
-
-
-  const relayerShare= config.ereborRelayerShare;
-  const{walletId,address }=await ereborFetch('/api/v1/recover', {
+async function recoverWallet(uid, backupShare){
+  const relayerShare = config.ereborRelayerShare;
+  const { walletId,address }= await ereborFetch('/api/v1/recover', {
     share1: relayerShare,
     share2: backupShare,
   });
-
-
-
-
-
-
-  return{walletId,address};
-
+  return{ walletId, address};
 
 
 }
-
-
-
-
-
-

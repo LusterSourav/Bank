@@ -18,7 +18,7 @@ and submits the transaction. The user reimburses the relayer in USDC as part of 
 **How.**
 
 ```js
-// ponytail: one route, one job
+// one route, one job
 export async function relayTx(typedData, userSig) {
   const { to, value, data, nonce, deadline } = typedData.message
   if (deadline < Math.floor(Date.now() / 1000)) throw new Error('deadline passed')
@@ -119,7 +119,6 @@ New endpoints alongside existing ones:
 | `/api/remit` | POST | Creates escrow, returns escrow ID |
 | `/api/claim` | POST | Releases escrow to receiver |
 | `/api/rate` | GET | Returns USD/INR from Chainlink |
-| `/api/zk/verify` | POST | Submits proof to ZKVerifier |
 | `/api/relay` | POST | Submits meta-transaction |
 | `/api/wallet` | POST | Creates Erebor wallet for user |
 
@@ -141,10 +140,7 @@ src/
 // fields added to User schema
 walletAddress: String,
 ereborWalletId: String,
-zkStatus: {
-  ageVerified: { type: Boolean, default: false },
-  countryVerified: { type: Boolean, default: false },
-}
+// ZK removed — age check uses KYC-verified DOB from Aadhaar
 
 const escrowSchema = new mongoose.Schema({
   escrowId: { type: String, unique: true, required: true },

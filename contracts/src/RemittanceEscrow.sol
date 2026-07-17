@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-// ponytail: CLTV-style timelock escrow. relayer deposits, receiver claims, timelock refunds.
+// CLTV-style timelock escrow. relayer deposits, receiver claims, timelock refunds.
 contract RemittanceEscrow {
     IERC20 public immutable token;
 
@@ -70,7 +70,6 @@ contract RemittanceEscrow {
         emit EscrowDisputed(escrowId);
     }
 
-    // ponytail: sender refunds after timelock. Bitcoin CLTV pattern.
     function refund(bytes32 escrowId) external {
         Escrow storage e = escrows[escrowId];
         if (msg.sender != e.sender) revert NotSender();

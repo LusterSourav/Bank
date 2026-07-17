@@ -69,6 +69,8 @@
   "phoneHint": "مع رمز الدولة",
   "waAlerts": "تنبيهات واتساب",
   "waAlertsDesc": "استلام التحديثات على واتساب",
+  "waSendAlerts": "تلقي تنبيهات واتساب",
+  "notificationHistory": "الإشعارات الأخيرة",
   "save": "حفظ",
   "saving": "جارٍ الحفظ...",
   "saved": "تم الحفظ",

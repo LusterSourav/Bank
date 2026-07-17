@@ -1,5 +1,0 @@
-[package]
-name = "verify_country"
-type = "bin"
-authors = [""]
-compiler_version = ">=0.36"

@@ -35,8 +35,7 @@ Vercel (Express)
        │
        ├── MultiCurrencyWallet.sol
        ├── RemittanceEscrow.sol
-       ├── OracleProxy.sol
-       └── ZKVerifier.sol
+       └── OracleProxy.sol
 ```
 
 ## Key Decisions
@@ -58,9 +57,11 @@ small MATIC balance (~$10) and signs meta-transactions. Users reimburse the rela
 part of the same transaction batch. This is CPFP adapted to EVM: the relayer pre-funds gas, the
 settlement includes a USDC transfer back to the relayer.
 
-**ZK proofs are generated in-browser, not on the server.** Sending raw PII to a server creates
-liability. NoirJS compiles to WASM and runs the proving in the browser tab. The server only sees
-the proof and public signals — never the DOB or ID numbers.
+**Age verification via KYC, not ZK.** The original design had Noir circuits and Groth16 proofs
+for age verification. The ZK pipeline was never deployed — `noir_js` was never installed, the
+frontend generated dummy proofs, and the server accepted any string. Age is now verified from
+Aadhaar-verified DOB (government-issued ID), which is stronger evidence than any ZK proof the
+MVP would produce, with zero gas cost. See `guide/ZK.md`.
 
 ## What We Did Not Build
 

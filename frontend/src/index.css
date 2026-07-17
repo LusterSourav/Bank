@@ -1,7 +1,7 @@
 /* Bitcoin Design System — dark theme.
    Design tokens at the top (colors, spacing, radius, type, motion), then
    component styles below. All spacing follows an 8px grid (--sp-*).
-   ponytail: single file, no CSS modules, no preprocessor. Split into modules
+   single file, no CSS modules, no preprocessor. Split into modules
             only if the file exceeds ~2000 lines or the app needs code-split
             CSS per page. */
 
@@ -1596,6 +1596,23 @@ body {
 .settings-expanded .btn-secondary {
   align-self: flex-start;
 }
+
+.settings-divider {
+  height: 1px;
+  background: var(--border);
+  margin: var(--sp-8) var(--sp-16);
+}
+
+.notif-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.notif-status-dot.sent { background: var(--bitcoin-orange); }
+.notif-status-dot.delivered { background: #22c55e; }
+.notif-status-dot.failed { background: #ef4444; }
+.notif-status-dot.bounced { background: #ef4444; }
 
 .totp-qr-wrap {
   display: flex;

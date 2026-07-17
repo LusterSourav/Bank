@@ -74,14 +74,9 @@ wallet and the user gets a notification.
 
 ## ZKScreen
 
-**Why.** Proving age or country requires user interaction — scanning a document, waiting for the
-proof to generate. A dedicated screen guides them through it step by step.
-
-**How.** Three steps:
-1. Select proof type (age 18+, country verification).
-2. Scan government ID (camera opens, app hashes relevant fields).
-3. Generating proof (NoirJS spinner, ~2-5 seconds).
-4. Done — `zkStatus` updates, badge appears on profile.
+**Removed.** The ZK proof submission screen was a 100-line UI that generated dummy proofs
+and required `noir_js` which was never installed. Age verification now uses KYC data
+(Aadhaar-verified DOB) — no ZK needed. See `guide/ZK.md` for rationale.
 
 ## SettingsScreen (Extended)
 
@@ -91,7 +86,6 @@ management. It needs wallet export, key recovery, and ZK status display.
 **How.** Add sections:
 - **Wallet** — shows wallet address, "Export backup phrase" (downloads recovery PDF), "Recover
   wallet from backup" (accepts backup share, calls Erebor recovery).
-- **ZK Status** — shows age/country verification status, link to ZKScreen to (re)verify.
 - **Connected Platforms** — list of gig platforms that send webhooks to this account.
 
 ## File Structure
@@ -103,7 +97,7 @@ frontend/src/
 │   ├── WalletScreen.jsx    [NEW]
 │   ├── RemitScreen.jsx     [NEW]
 │   ├── ClaimScreen.jsx     [NEW]
-│   └── ZKScreen.jsx        [NEW]
+│   └── ZKScreen.jsx        [REMOVED — see guide/ZK.md]
 ├── styles/
 │   ├── base.css            [from index.css shared rules]
 │   ├── wallet.css          [NEW]

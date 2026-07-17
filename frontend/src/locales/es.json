@@ -69,6 +69,8 @@
   "phoneHint": "Con código de país",
   "waAlerts": "Alertas de WhatsApp",
   "waAlertsDesc": "Recibe actualizaciones en WhatsApp",
+  "waSendAlerts": "Recibir alertas de WhatsApp",
+  "notificationHistory": "Notificaciones Recientes",
   "save": "Guardar",
   "saving": "Guardando...",
   "saved": "Guardado",

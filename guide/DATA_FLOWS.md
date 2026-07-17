@@ -53,7 +53,7 @@ Receiver ──→ ClaimScreen (see pending escrows)
            ──→ POST /api/claim { escrowId }
            ──→ Express:
                 1. Verifies req.userId matches escrow receiver
-                2. Checks !zkRequired || user.zkStatus.ageVerified
+                 2. Checks user is 18+ from KYC-verified DOB (Aadhaar)
                 3. Calls relayer.relayTx() to call release(escrowId)
                    ──→ Polygon: transfer(escrow, receiver, amount)
                    ──→ Polygon: emit EscrowReleased
@@ -64,25 +64,22 @@ Receiver ──→ ClaimScreen (see pending escrows)
            ──→ Notification: "₹10,000 has been released to your wallet"
 ```
 
-**ZK gate.** If the remittance corridor requires age or country verification (e.g., the sending
-bank requires age 18+), the claim route checks `zkStatus` before calling `release()`. If
-unverified, returns `403 ZK verification required` with a link to ZKScreen.
+**KYC gate.** If the remittance corridor requires age verification (e.g., the sending
+bank requires age 18+), the claim route checks age from KYC-verified DOB before calling `release()`.
+If unverified, returns `403 KYC age verification required`.
 
-## 4. ZK Proof Submission
+## 4. Age Verification
+
+Age is verified through the KYC process. Aadhaar OTP verification returns the user's date of
+birth, which is stored in `user.kyc.verifiedDob`. The claim route computes age server-side:
 
 ```
-User ──→ ZKScreen
-      ──→ Select proof type (age / country)
-      ──→ Scan government ID (camera)
-      ──→ Browser hashes relevant fields via NoirJS
-      ──→ NoirJS generates Groth16 proof (~2-5 seconds)
-      ──→ POST /api/zk/verify { proof, pubSignals, type }
-      ──→ Express:
-           1. Calls ZKVerifier.verify(proof, pubSignals) on Polygon
-           2. If valid → User.zkStatus.{ageVerified,countryVerified} = true
-           3. Returns { verified: true }
-      ──→ ZKScreen shows success badge
+const age = ((Date.now() - new Date(user.kyc.verifiedDob).getTime()) / 31557600000) | 0;
+if (age < 18) return res.status(403).json({ error: 'KYC age verification required' });
 ```
+
+No ZK proofs, no circuits, no on-chain verification needed. The DOB comes from a government-issued
+ID and is verified by the Sandbox API — stronger than any ZK proof the MVP could produce.
 
 ## 5. Refund (Timelock Expiry)
 

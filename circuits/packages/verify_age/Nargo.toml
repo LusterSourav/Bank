@@ -1,5 +1,0 @@
-[package]
-name = "verify_age"
-type = "bin"
-authors = [""]
-compiler_version = ">=0.36"

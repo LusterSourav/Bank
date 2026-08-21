@@ -1,64 +1,274 @@
-PROPRIETARY AND CONFIDENTIAL
+PROPRIETARY AND CONFIDENTIAL LICENSE
 
 Copyright (c) 2026 LusterSourav. All rights reserved.
 
-This software and associated documentation files (the "Software") are
-owned by LusterSourav and are protected by copyright, trademark, and
-other intellectual property laws.
+By accessing, viewing, cloning, downloading, or otherwise obtaining any
+copy of the Software, you agree to be bound by this License. If you do
+not agree, you have no right to access the Software and must immediately
+delete all copies.
 
-RESTRICTIONS
+1. DEFINITIONS
 
-You may not, without prior written permission from the copyright holder:
+1.1 "Software" means all source code, object code, binary files,
+scripts, smart contracts, algorithms, data structures, API designs,
+protocol specifications, fraud detection logic, financial models,
+transaction routing rules, encryption approaches, database schemas,
+configuration files, documentation, comments, variable names, function
+names, class names, and any other material contained in or derived from
+this repository, in any form or medium now known or hereafter developed.
 
-1. Copy, reproduce, distribute, or create derivative works of the Software
-   or any portion thereof.
+1.2 "Derivative Work" means any work that is based on, derived from,
+or incorporates the Software or any portion thereof, including but not
+limited to: (a) modifications to the original code, (b) code that
+implements the same or substantially similar algorithms, patterns,
+logic, or functionality, (c) code that calls, interfaces with, or
+integrates with the Software, (d) data structures or schemas modeled
+on those in the Software, and (e) any work that a reasonable person
+would consider to be influenced by or based upon the Software.
 
-2. Use the Software, in whole or in part, for any commercial purpose,
-   including but not limited to selling, licensing, or sublicensing the
-   Software or any derivative thereof to any third party.
+1.3 "Trade Secrets" means all proprietary information contained in the
+Software including but not limited to: algorithms, formulas, processes,
+designs, patterns, know-how, techniques, methods, improvements, and any
+other technical or business information that derives independent economic
+value from not being generally known.
 
-3. Use the Software in any public demonstration, event, conference,
-   workshop, or marketing material without explicit written authorization.
+1.4 "Authorized Use" means use expressly authorized in writing by the
+Copyright Holder under a separate executed agreement.
 
-4. Reverse engineer, decompile, disassemble, or otherwise attempt to
-   derive the source code of the Software, except to the extent expressly
-   permitted by applicable law.
+2. OWNERSHIP
 
-5. Remove, alter, or obscure any proprietary notices, labels, or marks
-   on the Software or its copies.
+The Software and all intellectual property rights therein are and remain
+the exclusive property of the Copyright Holder. This License does not
+transfer any ownership interest. All rights not expressly granted are
+reserved.
 
-6. Transfer, sublicense, or assign your rights under this License to
-   any third party without prior written consent.
+3. PROHIBITED CONDUCT
 
-PERMITTED USE
+Without prior written permission from the Copyright Holder, you shall
+not, directly or indirectly:
 
-You may view and study the source code for personal, non-commercial
-reference purposes only. This does not grant any license to use,
-copy, modify, or distribute the Software.
+3.1 Copy, reproduce, republish, upload, post, transmit, distribute, or
+otherwise make available the Software or any portion thereof to any
+third party.
 
-TERMINATION
+3.2 Use, study, analyze, inspect, or examine the Software for any
+purpose, including but not limited to learning its algorithms, patterns,
+architecture, logic, or functionality.
 
-This License is effective until terminated. Your rights under this
-License will terminate automatically if you breach any restriction
-herein. Upon termination, you must destroy all copies of the Software
-in your possession.
+3.3 Create, develop, or contribute to any Derivative Work, including
+code that replicates, reimplements, or achieves substantially similar
+results through independent means using knowledge gained from the
+Software.
 
-DISCLAIMER
+3.4 Reverse engineer, decompile, disassemble, translate, or otherwise
+attempt to derive the source code, underlying ideas, algorithms, or
+structure of the Software, except to the extent expressly permitted by
+applicable law, and then only after providing the Copyright Holder with
+prior written notice and allowing thirty (30) days to offer an
+alternative arrangement.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES,
-OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
-ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
+3.5 Use the Software or any Trade Secret for any commercial purpose,
+including but not limited to building, operating, selling, licensing,
+or offering any competing or similar product, service, or platform.
 
-GOVERNING LAW
+3.6 Use the Software in any public demonstration, event, conference,
+workshop, webinar, marketing material, pitch deck, or promotional
+activity.
 
-This License shall be governed by and construed in accordance with the
-laws of the applicable jurisdiction. Any disputes arising under this
-License shall be subject to the exclusive jurisdiction of the courts
-thereof.
+3.7 Sublicense, lease, rent, loan, distribute, or transfer the Software
+or any rights therein to any third party.
+
+3.8 Remove, alter, or obscure any proprietary notices, copyright
+marks, license headers, or other identification on the Software or
+its copies.
+
+3.9 Store, cache, or host the Software on any server, cloud service,
+or storage medium accessible to third parties without Authorized Use.
+
+3.10 Employ the Software or Trade Secrets in any employment,
+consulting, or contractor engagement without disclosing the dependency
+and obtaining written authorization.
+
+4. ANTI-CIRCUMVENTION
+
+4.1 You shall not circumvent the restrictions in this License by any
+means, including but not limited to: (a) using the Software through a
+shell company, subsidiary, affiliate, contractor, or agent, (b) using
+the Software in a jurisdiction where this License is not enforceable,
+(c) using the Software under a different名义 or purpose, (d) accessing
+the Software through unauthorized means, or (e) using any portion of
+the Software in a larger work without authorization.
+
+4.2 You shall not use any knowledge, information, or insight gained
+from the Software to build, improve, or advise on any competing or
+similar product or service, whether or not that product or service
+contains copies of the Software.
+
+4.3 Clean-room implementation is expressly prohibited. You may not
+study the Software and have a separate person or team implement the
+same functionality based on your notes, specifications, or descriptions.
+
+5. SMART CONTRACT PROVISIONS
+
+5.1 The Software includes Ethereum smart contracts and related code.
+You shall not deploy, interact with, or use any smart contract
+contained in the Software on any blockchain network without Authorized
+Use.
+
+5.2 You shall not create, deploy, or interact with any smart contract
+that replicates, interfaces with, or achieves similar functionality
+to the Software smart contracts using knowledge gained from the Software.
+
+5.3 You shall not fork, modify, or create derivative smart contracts
+based on the Software smart contracts.
+
+6. AUDIT AND COMPLIANCE
+
+6.1 The Copyright Holder reserves the right to audit your use of the
+Software upon reasonable notice and during normal business hours.
+
+6.2 You shall maintain accurate records of your use of the Software
+and provide such records to the Copyright Holder upon request.
+
+6.3 Failure to cooperate with an audit constitutes a material breach
+of this License.
+
+7. TERM AND TERMINATION
+
+7.1 This License is effective from the date you first access the
+Software and continues until terminated.
+
+7.2 The Copyright Holder may terminate this License immediately upon
+written notice if you breach any provision.
+
+7.3 Upon termination, you must: (a) immediately cease all use of the
+Software, (b) destroy all copies of the Software in your possession
+or control, (c) purge all cached or stored copies, and (d) certify
+in writing that you have complied with this section within seven (7)
+days of termination.
+
+7.4 Termination does not limit any other remedy available to the
+Copyright Holder at law or in equity.
+
+8. INJUNCTIVE RELIEF
+
+8.1 You acknowledge that the Software contains valuable Trade Secrets
+and that unauthorized use will cause irreparable harm for which
+monetary damages alone would be inadequate.
+
+8.2 In the event of any actual or threatened breach of this License,
+the Copyright Holder shall be entitled to immediate injunctive relief,
+specific performance, and any other equitable remedies, without the
+necessity of proving actual damages or posting any bond.
+
+8.3 The Copyright Holder shall be entitled to recover all costs and
+expenses, including reasonable attorneys fees, incurred in enforcing
+this License.
+
+9. LIQUIDATED DAMAGES
+
+9.1 In lieu of proving actual damages for unauthorized use of the
+Software, you agree to pay liquidated damages of one hundred thousand
+US dollars (USD 100,000) per violation, plus ten percent (10%) of
+your annual revenue attributable to the unauthorized use, whichever
+is greater.
+
+9.2 Each instance of unauthorized use constitutes a separate violation.
+Continuing violations are daily violations.
+
+9.3 These liquidated damages represent a genuine pre-estimate of harm
+and not a penalty.
+
+10. TRADE SECRET PROTECTION
+
+10.1 The Software contains Trade Secrets that are protected under
+applicable trade secret law regardless of copyright registration or
+this License.
+
+10.2 You shall maintain the confidentiality of all Trade Secrets and
+use at least the same degree of care you use to protect your own
+confidential information, but no less than reasonable care.
+
+10.3 The obligations in this section survive termination of this
+License for so long as the information remains a Trade Secret.
+
+11. NON-COMPETE
+
+11.1 For a period of three (3) years after your last access to the
+Software, you shall not, directly or indirectly, build, operate,
+consult on, invest in, or contribute to any product or service that
+competes with or is substantially similar to the Software.
+
+11.2 For purposes of this section, "competing" includes any product
+or service that performs money transmission, cross-border remittance,
+blockchain-based escrow, oracle-mediated settlement, or similar
+financial services using substantially similar technology or approaches.
+
+12. DISCLAIMER
+
+THE SOFTWARE IS PROVIDED AS IS WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. THE COPYRIGHT
+HOLDER MAKES NO WARRANTY THAT THE SOFTWARE IS ERROR-FREE OR WILL
+OPERATE WITHOUT INTERRUPTION.
+
+13. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY INDIRECT,
+INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM
+OR RELATED TO THIS LICENSE OR THE SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGES. THE COPYRIGHT HOLDERS TOTAL LIABILITY
+SHALL NOT EXCEED THE AMOUNT OF LIQUIDATED DAMAGES SPECIFIED IN
+SECTION 9.
+
+14. GOVERNING LAW AND JURISDICTION
+
+14.1 This License shall be governed by and construed in accordance
+with the laws of the State of Delaware, United States, without regard
+to its conflict of laws principles.
+
+14.2 Any dispute arising under this License shall be resolved
+exclusively in the state or federal courts located in Wilmington,
+Delaware. You consent to the personal jurisdiction of such courts.
+
+15. SEVERABILITY
+
+If any provision of this License is held to be invalid or
+unenforceable, the remaining provisions shall remain in full force
+and effect. The invalid provision shall be modified to the minimum
+extent necessary to make it valid and enforceable while preserving
+its original intent.
+
+16. ENTIRE AGREEMENT
+
+This License constitutes the entire agreement between you and the
+Copyright Holder regarding the Software and supersedes all prior or
+contemporaneous agreements, proposals, or communications, whether
+written or oral.
+
+17. NO IMPLIED LICENSES
+
+No license or rights are granted by implication, estoppel, or any
+other means. All rights not expressly granted are reserved by the
+Copyright Holder.
+
+18. WAIVER
+
+No waiver of any provision shall constitute a waiver of any other
+provision or the same provision on another occasion. Any waiver must
+be in writing and signed by the Copyright Holder.
+
+19. ASSIGNMENT
+
+You may not assign or transfer this License or any rights herein
+without the prior written consent of the Copyright Holder. Any
+attempted assignment without such consent is void.
+
+20. NOTICES
+
+All notices under this License must be in writing and sent to the
+Copyright Holder via GitHub:
+https://github.com/LusterSourav/Bank
 
 CONTACT
 

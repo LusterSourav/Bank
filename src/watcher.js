@@ -1,5 +1,6 @@
 import{ethers}from 'ethers';
 import config from './config.js';
+import logger from './logger.js';
 
 //15s poll for escrow events. not real-time, fine for mvp.
 const abi=[
@@ -20,7 +21,11 @@ function retry(fn,retries=2){
 
 export function startWatching(){
   const provider=new ethers.JsonRpcProvider(config.polygonRpcUrl);
-  const contract=new ethers.Contract(config.remittanceEscrowAddress,abi, provider);
+  // one contract per token, in case a token ever gets its own escrow
+  const contracts=Object.entries(config.escrows)
+    .filter(([,addr])=>addr)
+    .map(([token,addr])=>({token,contract:new ethers.Contract(addr,abi,provider)}));
+  if(contracts.length===0){logger.error('no escrow addresses configured watcher idle');return;}
   let lastBlock;
 
   pollTimer=setInterval(async()=>{
@@ -29,20 +34,26 @@ export function startWatching(){
       if(!lastBlock){lastBlock=current;return;}
 
 
-      const events=await retry(()=>contract.queryFilter('*',lastBlock,current));
-      for(const e of events){
-        const{ Escrow} = await import('./models.js');
+      for(const {token,contract} of contracts){
+        const events=await retry(()=>contract.queryFilter('*',lastBlock,current));
+        for(const e of events){
+          const{ Escrow} = await import('./models.js');
 
-        if(e.event === 'EscrowCreated'){
-          await Escrow.create({
-            escrowId: e.args.escrowId,
-            senderAddress: e.args.sender,
-            receiverAddress: e.args.receiver,
-            amount: Number(e.args.amount),
-            lockUntil: new Date(Number(e.args.lockUntil)* 1000),
-            status: 'created',
-          });
-        }else if(e.event === 'EscrowReleased'){
+          if(e.event === 'EscrowCreated'){
+            await Escrow.updateOne(
+              {escrowId: e.args.escrowId},
+              {$set:{
+                senderAddress: e.args.sender,
+                receiverAddress: e.args.receiver,
+                amount: Number(e.args.amount),
+                token,
+                escrowAddress: contract.target,
+                lockUntil: new Date(Number(e.args.lockUntil)* 1000),
+                status: 'created',
+              }},
+              {upsert: true}
+            );
+          }else if(e.event === 'EscrowReleased'){
           await Escrow.updateOne({ escrowId: e.args.escrowId},{status: 'released'});
         }else if(e.event === 'EscrowDisputed'){
           await Escrow.updateOne({escrowId: e.args.escrowId},{status: 'disputed'});
@@ -50,9 +61,10 @@ export function startWatching(){
           await Escrow.updateOne({ escrowId: e.args.escrowId}, { status: 'refunded'});
         }
       }
+      }
       lastBlock=current;
     }catch(err){
-      console.error('watcher error:',err.message);
+      logger.error({err:err.message}, 'watcher error');
 
     }
 
@@ -67,12 +79,12 @@ export function startWatching(){
       for(const e of expired){
         const iface =new ethers.Interface(['function refund(bytes32 escrowId)']);
         const data=iface.encodeFunctionData('refund',[e.escrowId]);
-        await retry(()=>relayTx(config.remittanceEscrowAddress,data));
+        await retry(()=>relayTx(e.escrowAddress || config.remittanceEscrowAddress,data));
         e.status ='refunded';
         await e.save();
       }
     }catch(err){
-      console.error('refund check error:',err.message);
+      logger.error({err:err.message}, 'refund check error');
 
     }
   },60000);

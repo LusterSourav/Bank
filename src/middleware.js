@@ -2,6 +2,7 @@ import admin from 'firebase-admin';
 import{User }from './models.js';
 import { verifyTotpSession} from './totpSession.js';
 import config from './config.js';
+import logger from './logger.js';
 
 let adminInit=false;
 try{
@@ -16,7 +17,7 @@ try{
   }
   adminInit= true;
 }catch(e){
-  console.error('Firebase init error:', e.message);
+  logger.error({err:e.message}, 'firebase init error');
 }
 
 export async function auth(req,res,next) {
@@ -58,4 +59,11 @@ export async function totpRequired(req,res,next){
     return res.status(403).json({error: 'TOTP session expired'});
   }
 
+}
+
+// eslint-disable-next-line no-unused-vars
+export function errorHandler(err,req,res,next){
+  const status=err.status||500;
+  logger.error({err:err.message,stack:err.stack,status}, 'unhandled error');
+  res.status(status).json({error: status===500?'internal server error':err.message});
 }

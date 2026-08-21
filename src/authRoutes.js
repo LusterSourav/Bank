@@ -6,6 +6,7 @@ import{encrypt,decrypt}from './encryption.js';
 import { signTotpSession,signWebauthnSession}from './totpSession.js';
 import{createRegistrationOptions,verifyRegistration,createAuthenticationOptions, verifyAuthentication,getRpId,getOrigin }from './webauthn.js';
 import store from './fraud/store.js';
+import logger from './logger.js';
 
 const router=Router();
 
@@ -24,7 +25,7 @@ router.post('/totp/setup',auth,async(req, res)=>{
     res.json({qrDataUrl});
 
   }catch(e){
-    console.error('totp/setup error:', e);
+    logger.error({err:e}, 'totp/setup error');
     res.status(500).json({error: e.message});
   }
 });
@@ -55,7 +56,7 @@ router.post('/totp/verify-enable',auth, async (req,res)=>{
     });
     res.json({status: 'enabled', backupCodes: codes });
   }catch (e){
-    console.error('totp/verify-enable error:',e);
+    logger.error({err:e}, 'totp/verify-enable error');
 
 
     res.status(500).json({error: e.message });
@@ -109,7 +110,7 @@ router.post('/totp/verify',auth, async(req,res)=>{
     store.delete(`totp:${user._id}`);
     res.json({status: 'verified', expiresIn: 3600,totpToken: signTotpSession(req.userId) });
   }catch(e){
-    console.error('totp/verify error:',e);
+    logger.error({err:e}, 'totp/verify error');
     res.status(500).json({error: e.message});
   }
 });
@@ -138,7 +139,7 @@ router.post('/totp/disable',auth,async (req,res)=>{
 
     res.json({status: 'disabled' });
   } catch (e) {
-    console.error('totp/disable error:',e);
+    logger.error({err:e}, 'totp/disable error');
     res.status(500).json({error: e.message});
   }
 });
@@ -152,7 +153,7 @@ router.get('/totp/status', auth,async(req,res)=>{
     const backupCodesRemaining= (user.backupCodes ||[]).filter(c => !c.used).length;
     res.json({enabled: !!user.totpEnabled,hasSecret: !!user.totpSecret,backupCodesRemaining});
   }catch (e){
-    console.error('totp/status error:', e);
+    logger.error({err:e}, 'totp/status error');
     res.status(500).json({ error: e.message });
   }
 });
@@ -182,7 +183,7 @@ router.post('/totp/backup-codes', auth,async(req,res)=> {
 
     res.json({backupCodes: codes});
   }catch(e) {
-    console.error('totp/backup-codes error:', e);
+    logger.error({err:e}, 'totp/backup-codes error');
     res.status(500).json({error: e.message});
   }
 });
@@ -345,7 +346,7 @@ router.get('/device/fingerprints', auth,async(req,res)=>{
 
     res.json({devices: user.deviceFingerprints || []});
   }catch(e){
-    console.error('device/fingerprints error:', e.message);
+    logger.error({err:e.message}, 'device/fingerprints error');
     res.status(500).json({error: 'failed to get devices'});
 
 

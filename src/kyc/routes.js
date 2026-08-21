@@ -160,6 +160,13 @@ router.post('/kyc/finalize',auth, async(req,res)=>{
       status='rejected';
     }
 
+    //ponytail: kyc verification implies age/country proof. no zk circuits needed for v1.
+    const zkUpdate = {};
+    if (status === 'verified') {
+      zkUpdate['zkStatus.ageVerified'] = true;
+      zkUpdate['zkStatus.countryVerified'] = true;
+    }
+
     await User.updateOne({firebaseUid: req.userId},{
       $set: {
         'kyc.status': status,
@@ -167,6 +174,7 @@ router.post('/kyc/finalize',auth, async(req,res)=>{
         'kyc.nameMatchScore': crossResult.nameMatch.score,
         'kyc.dobMatch': crossResult.dobMatch,
         'kyc.recommendation': crossResult.recommendation,
+        ...zkUpdate,
       },
       $unset: { 'kyc.kycStartTime': '' },
     });

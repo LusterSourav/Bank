@@ -3,17 +3,23 @@ import cors from 'cors';
 import helmet from 'helmet';
 import Stripe from 'stripe';
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 import config from './config.js';
 import routes from './routes.js';
 import kycRoutes from './kyc/routes.js';
+import {errorHandler} from './middleware.js';
 
 import authRoutes from './authRoutes.js';
 
 import gigWebhook from './webhooks/gig.js';
 import notificationWebhooks from './webhooks.js';
+import logger from './logger.js';
 
 const app=express();
+app.set('trust proxy', 1);
 const stripe= new Stripe(config.stripeKey);
+
+app.use((req,res,next)=>{req.id=crypto.randomUUID();res.setHeader('x-request-id',req.id);next();});
 
 
 app.use(helmet());
@@ -56,7 +62,7 @@ app.post('/api/webhook',express.raw({type: 'application/json'}), async(req,res)=
     }
     res.json({received: true });
   }catch (err) {
-    console.error('stripe webhook error:',err.message);
+    logger.error({err:err.message}, 'stripe webhook error');
     res.status(400).json({ error: err.message});
   }
 });
@@ -66,7 +72,7 @@ app.post('/api/razorpay-webhook',express.raw({type: 'application/json' }), async
     const sig= req.headers['x-razorpay-signature'];
     const expected=crypto.createHmac('sha256', config.razorpay.webhookSecret).update(req.body).digest('hex');
 
-    if (sig !== expected)return res.status(400).json({ error: 'invalid signature'});
+    if(!sig||sig.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected)))return res.status(400).json({ error: 'invalid signature'});
 
     const event=JSON.parse(req.body);
 
@@ -93,7 +99,7 @@ app.post('/api/razorpay-webhook',express.raw({type: 'application/json' }), async
   }catch(err){
 
 
-    console.error('razorpay webhook error:',err.message);
+    logger.error({err:err.message}, 'razorpay webhook error');
     res.status(400).json({error: err.message});
   }
 });
@@ -107,6 +113,11 @@ app.use('/api', authRoutes);
 app.use('/api/webhook',gigWebhook);
 app.use('/webhooks', notificationWebhooks);
 
-app.get('/api/health', (_,res) => res.json({ok: true}));
+app.get('/api/health', (_,res) => {
+  const dbOk=mongoose.connection.readyState===1;
+  res.status(dbOk?200:503).json({ok:dbOk,db:dbOk?'connected':'disconnected'});
+});
+
+app.use(errorHandler);
 
 export default app;

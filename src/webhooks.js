@@ -2,6 +2,7 @@ import express, { Router } from 'express';
 import twilio from 'twilio';
 import config from './config.js';
 import { Notification } from './models/notification.js';
+import logger from './logger.js';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ router.post('/twilio', express.urlencoded({ extended: false }), (req, res) => {
     { ref },
     { $set: { status: mapStatus(MessageStatus), providerMessageId: MessageSid } },
     { upsert: true, new: true }
-  ).catch(e => console.error('notif status update failed', e.message));
+  ).catch(e => logger.error({err:e.message}, 'notif status update failed'));
 
   res.sendStatus(200);
 });
@@ -39,7 +40,7 @@ router.post('/resend', (req, res) => {
     { providerMessageId: data.email_id },
     { $set: { status: mapEmailStatus(type) } },
     { new: true }
-  ).catch(e => console.error('email status update failed', e.message));
+  ).catch(e => logger.error({err:e.message}, 'email status update failed'));
 
   res.sendStatus(200);
 });

@@ -3,13 +3,17 @@ import{Router} from 'express';
 import Stripe from 'stripe';
 import Razorpay from 'razorpay';
 
-
+import rateLimit from 'express-rate-limit';
 import admin from 'firebase-admin';
 import{auth,totpRequired } from './middleware.js';
 import { User, Transaction,Beneficiary,Escrow } from './models.js';
 import{Notification}from './models/notification.js';
 import config from './config.js';
 import{ sendEmailNotification,sendWhatsAppNotification}from './notifications.js';
+import logger from './logger.js';
+import isSanctioned from './sanctions.js';
+import{validate,schemas}from './validate.js';
+import checkSuspicious from './suspicious.js';
 
 const router=Router();
 
@@ -61,17 +65,12 @@ async function inrToStable(inrAmount,token= 'usdc'){
   return parseFloat(usdcVal.toFixed(6));
 }
 
-// in-memory rate limiter, dies on restart
-const rateLimit={};
-const checkRate=(key,limit=10, windowMs =60000)=>{
-  const now = Date.now();
-  if(!rateLimit[key])rateLimit[key]=[];
-  rateLimit[key] =rateLimit[key].filter(t => now - t < windowMs);
-
-  if(rateLimit[key].length >= limit) return false;
-  rateLimit[key].push(now);
-  return true;
-};
+const depositLimiter=rateLimit({windowMs:60000,max:5,standardHeaders:true,legacyHeaders:false,keyGenerator:(req)=>req.userId});
+const sendLimiter=rateLimit({windowMs:60000,max:10,standardHeaders:true,legacyHeaders:false,keyGenerator:(req)=>req.userId});
+const onrampLimiter=rateLimit({windowMs:60000,max:5,standardHeaders:true,legacyHeaders:false,keyGenerator:(req)=>req.userId});
+const remitLimiter=rateLimit({windowMs:60000,max:10,standardHeaders:true,legacyHeaders:false,keyGenerator:(req)=>req.userId});
+const claimLimiter=rateLimit({windowMs:60000,max:10,standardHeaders:true,legacyHeaders:false,keyGenerator:(req)=>req.userId});
+const publicLimiter=rateLimit({windowMs:60000,max:30,standardHeaders:true,legacyHeaders:false});
 
 // was in send+deposit, pulled up
 async function getTodayTotal(userId,type){
@@ -114,12 +113,12 @@ router.post('/auth/verify',auth, async(req,res)=>{
       sendLimit: user.sendLimit || 100000,
     });
   }catch (e){
-    console.error('auth/verify error:', e);
+    logger.error({err:e}, 'auth/verify error');
     res.status(500).json({error: e.message || 'verify failed'});
   }
 });
 
-router.put('/auth/send-limit',auth,totpRequired,async(req,res)=>{
+router.put('/auth/send-limit',auth,totpRequired,validate(schemas.sendLimit),async(req,res)=>{
   try{
     const{ sendLimit}= req.body;
     if(!sendLimit || sendLimit < 500 || sendLimit > 500000) {
@@ -129,13 +128,13 @@ router.put('/auth/send-limit',auth,totpRequired,async(req,res)=>{
     await User.updateOne({ firebaseUid: req.userId },{$set:{sendLimit} });
     res.json({ sendLimit });
   }catch(e){
-    console.error('auth/send-limit error:',e.message);
+    logger.error({err:e.message}, 'auth/send-limit error');
 
     res.status(500).json({ error: 'failed to update limit'});
   }
 });
 
-router.put('/auth/profile', auth, totpRequired, async (req, res) => {
+router.put('/auth/profile', auth, totpRequired,validate(schemas.profile),async (req, res) => {
   try{
     const{name} =req.body;
     if(!name || name.length < 1)return res.status(400).json({error: 'Name required'});
@@ -143,7 +142,7 @@ router.put('/auth/profile', auth, totpRequired, async (req, res) => {
     res.json({name});
 
   }catch(e){
-    console.error('auth/profile error:', e.message);
+    logger.error({err:e.message}, 'auth/profile error');
     res.status(500).json({error: 'failed to update profile'});
 
   }
@@ -165,7 +164,7 @@ router.post('/auth/delete-account', auth, totpRequired,async (req, res) =>{
     res.json({ status: 'deleted'});
 
   }catch(e){
-    console.error('delete-account error:',e.message);
+    logger.error({err:e.message}, 'delete-account error');
 
     res.status(500).json({error: 'failed to delete account' });
   }
@@ -179,12 +178,12 @@ router.get('/notifications/prefs',auth,async(req,res) => {
     if (!user)return res.status(404).json({error: 'user not found'});
     res.json({ email: user.email,phone: user.phone || '',notifyWhatsApp: user.notifyWhatsApp || false});
   }catch(e){
-    console.error('notifications/prefs error:', e.message);
+    logger.error({err:e.message}, 'notifications/prefs error');
     res.status(500).json({error: 'failed to get prefs'});
   }
 });
 
-router.post('/notifications/prefs',auth,async (req,res)=> {
+router.post('/notifications/prefs',auth,validate(schemas.notifPrefs),async (req,res)=> {
   try{
     const{phone,notifyWhatsApp }= req.body;
     const update={};
@@ -202,7 +201,7 @@ router.post('/notifications/prefs',auth,async (req,res)=> {
     if(!user)return res.status(404).json({error: 'user not found'});
     res.json({email: user.email,phone: user.phone || '',notifyWhatsApp: user.notifyWhatsApp || false});
   }catch(e){
-    console.error('notifications/prefs error:',e.message);
+    logger.error({err:e.message}, 'notifications/prefs error');
     res.status(500).json({error: 'failed to save prefs'});
   }
 });
@@ -219,19 +218,16 @@ router.get('/notifications/history', auth, async (req, res) => {
       createdAt: n.createdAt,
     })));
   }catch(e){
-    console.error('notifications/history error:', e.message);
+    logger.error({err:e.message}, 'notifications/history error');
     res.status(500).json({error: 'failed to get history'});
   }
 });
 
 
-router.post('/upi-collect',auth, async (req, res)=>{
+router.post('/upi-collect',auth,depositLimiter,validate(schemas.upiCollect),async (req, res)=>{
   const {amount} = req.body;
 
-
-
   if(!amount || amount <= 0) return res.status(400).json({ error: 'invalid amount'});
-  if(!checkRate(`deposit:${req.userId}`, 5))return res.status(429).json({error: 'too many requests' });
 
 
   const user = await User.findOne({firebaseUid: req.userId});
@@ -260,7 +256,7 @@ router.post('/upi-collect',auth, async (req, res)=>{
   });
 });
 
-router.post('/deposit', auth,async(req,res) =>{
+router.post('/deposit', auth,validate(schemas.deposit),async(req,res) =>{
   const { amount, currency='inr'} =req.body;
 
 
@@ -285,7 +281,7 @@ router.post('/deposit', auth,async(req,res) =>{
   res.json({clientSecret: intent.client_secret,amount, currency});
 });
 
-router.get('/forex',async (req,res)=>{
+router.get('/forex',publicLimiter,async (req,res)=>{
   try {
     const resp= await fetch('https://api.frankfurter.app/latest?from=INR&to=USD,EUR,GBP,AED,SGD');
     const data=await resp.json();
@@ -295,7 +291,7 @@ router.get('/forex',async (req,res)=>{
   }
 });
 
-router.get('/order-status/:orderId',auth, async(req,res)=>{
+router.get('/order-status/:orderId',auth,validate(schemas.orderStatus),async(req,res)=>{
 
   const tx=await Transaction.findOne({razorpayId: req.params.orderId});
   if(!tx)return res.status(404).json({error: 'order not found'});
@@ -303,14 +299,17 @@ router.get('/order-status/:orderId',auth, async(req,res)=>{
 
 });
 
-router.post('/send', auth, totpRequired,async(req,res)=> {
+router.post('/send', auth, totpRequired,sendLimiter,validate(schemas.send),async(req,res)=> {
   const {amount,recipient, currency ='inr'}=req.body;
 
   if (!amount || amount <= 0 || !recipient)return res.status(400).json({ error: 'missing amount or recipient'});
-  if(!checkRate(`send:${req.userId}`,10))return res.status(429).json({error: 'too many requests'});
+  if(recipient.startsWith('0x') && isSanctioned(recipient))return res.status(403).json({error: 'sanctioned recipient'});
+
+  if(process.env.PAUSE_REMITTANCES==='1')return res.status(503).json({error: 'remittances temporarily paused'});
 
   const user= await User.findOne({firebaseUid: req.userId});
   if(!user)return res.status(404).json({error: 'user not found'});
+  user.lastIp=req.ip;
   if(user.balance < amount)return res.status(400).json({ error: 'insufficient balance' });
 
 
@@ -323,10 +322,14 @@ router.post('/send', auth, totpRequired,async(req,res)=> {
 
   const tx = await Transaction.create({userId: user.id, type: 'send',amount, currency, recipient, status: 'processing' });
 
-  user.balance -= amount;
-  await user.save();
+  const updated = await User.findOneAndUpdate(
+    { _id: user._id, balance: { $gte: amount } },
+    { $inc: { balance: -amount } },
+    { new: true }
+  );
+  if (!updated) return res.status(400).json({error: 'insufficient balance' });
 
-  res.json({txId: tx.id,balance: user.balance,amount,recipient, currency,status: tx.status});
+  res.json({txId: tx.id,balance: updated.balance,amount,recipient, currency,status: tx.status});
 
   //dont wait for this
   sendEmailNotification(user.email,'Money Sent',`<p>You sent <b>₹${amount}</b> to ${recipient}.</p>`, user._id, 'send');
@@ -334,6 +337,8 @@ router.post('/send', auth, totpRequired,async(req,res)=> {
   if (user.notifyWhatsApp && user.phone){
     sendWhatsAppNotification(user.phone,`You sent ₹${amount} to ${recipient}.`, null, user._id, 'send');
   }
+
+  checkSuspicious(user,amount).catch(()=>{});
 
 });
 
@@ -356,7 +361,7 @@ router.get('/beneficiaries',auth,async(req,res)=>{
 });
 
 
-router.post('/beneficiaries',auth,async (req,res) =>{
+router.post('/beneficiaries',auth,sendLimiter,validate(schemas.beneficiaries),async (req,res) =>{
   const{ name,ifsc,accountNumber,currency='inr'}=req.body;
 
   if(!name)return res.status(400).json({error: 'name required'});
@@ -381,12 +386,12 @@ router.get('/escrows/pending',auth, async(req,res) => {
     res.json(escrows);
 
   }catch(err){
-    console.error('pending escrows error:',err.message);
+    logger.error({err:err.message}, 'pending escrows error');
     res.status(500).json({error: err.message});
   }
 });
 
-router.get('/rate', async (req,res)=> {
+router.get('/rate',publicLimiter,async (req,res)=> {
   try{
 
     const {ethers } =await import('ethers');
@@ -402,13 +407,13 @@ router.get('/rate', async (req,res)=> {
 
     res.json({ rate: adjusted, raw: rate.toString(), decimals: Number(decimals) });
   } catch(err){
-    console.error('rate error:', err.message);
+    logger.error({err:err.message}, 'rate error');
     res.status(503).json({error: 'rate unavailable'});
   }
 });
 
 // deducts inr, relayer sends usdc
-router.post('/onramp',auth, async(req,res)=>{
+router.post('/onramp',auth,onrampLimiter,validate(schemas.onramp),async(req,res)=>{
   try{
     const {amount,token='usdc'}=req.body;
     if(!amount || amount <= 0)return res.status(400).json({error: 'invalid amount'});
@@ -459,8 +464,16 @@ router.post('/onramp',auth, async(req,res)=>{
       const t=config.tokens[token];
       const data=iface.encodeFunctionData('transfer',[user.walletAddress,ethers.parseUnits(String(stableAmount), t.decimals)]);
 
-      user.balance -= amount;
-      await user.save();
+      const updated = await User.findOneAndUpdate(
+        { _id: user._id, balance: { $gte: amount } },
+        { $inc: { balance: -amount } },
+        { new: true }
+      );
+      if (!updated) {
+        tx.status = 'failed';
+        await tx.save();
+        return res.status(400).json({error: 'insufficient balance'});
+      }
 
       const txHash=await relayTx(t.address, data);
 
@@ -475,40 +488,26 @@ router.post('/onramp',auth, async(req,res)=>{
 
       await tx.save();
 
-      user.balance += amount;
-      await user.save();
+      await User.updateOne({ _id: user._id }, { $inc: { balance: amount } });
 
       throw err;
     }
 
   }catch(err){
-    console.error('onramp error:',err.message);
+    logger.error({err:err.message}, 'onramp error');
     res.status(500).json({error: err.message });
   }
 });
 
-//fatf r.16 — log originator/beneficiary over threshold
-async function logTravelRule(user,receiverAddress,amount,txHash,token,txId){
-  const{ TravelRuleRecord }=await import('./models.js');
+import{submitTravelRule,needsTravelRule}from './travelRule.js';
 
-  await TravelRuleRecord.create({
-    txId,
-    originatorName: user.kyc?.verifiedName || user.name || user.email,
-    originatorWallet: user.walletAddress,
-    beneficiaryWallet: receiverAddress,
-    amount,
-    currency: 'inr',
-    token,
-    txHash,
-    thresholdMet: amount >= 1000,
-  });
-}
-
-router.post('/remit', auth, async(req,res) =>{
+router.post('/remit', auth,remitLimiter,validate(schemas.remit),async(req,res) =>{
   try{
     const{receiverAddress, amount,lockPeriod=259200, token = 'usdc' } = req.body;
 
     if (!receiverAddress || !amount) return res.status(400).json({error: 'missing receiver or amount'});
+    if(isSanctioned(receiverAddress))return res.status(403).json({error: 'sanctioned recipient'});
+    if(process.env.PAUSE_REMITTANCES==='1')return res.status(503).json({error: 'remittances temporarily paused'});
 
     const user=await User.findOne({firebaseUid: req.userId});
     if(!user)return res.status(404).json({error: 'user not found'});
@@ -527,44 +526,49 @@ router.post('/remit', auth, async(req,res) =>{
     }
 
     // deduct first, refund on failure
-    user.balance -= amount + fee;
-    await user.save();
+    const deducted = await User.findOneAndUpdate(
+      { _id: user._id, balance: { $gte: amount + fee } },
+      { $inc: { balance: -(amount + fee) } },
+      { new: true }
+    );
+    if (!deducted) return res.status(400).json({error: 'insufficient balance'});
 
     try {
       const {ethers }=await import('ethers');
       const{ relayTx}=await import('./relayer.js');
-      //remit is usdc-only for now. multi-token later if demand
-      const usdcAmount=await inrToUsdc(amount);
-      const lockedRate =parseFloat((usdcAmount / amount).toFixed(8));
+      const stableAmount=await inrToStable(amount,token);
+      const lockedRate =parseFloat((stableAmount / amount).toFixed(8));
 
 
       const iface =new ethers.Interface([
         'function createRemittance(address receiver, uint256 amount, uint256 lockPeriod) returns (bytes32)',
       ]);
 
-      const data=iface.encodeFunctionData('createRemittance',[receiverAddress,ethers.parseUnits(String(usdcAmount), 6), lockPeriod]);
+      const t=config.tokens[token];
+      const data=iface.encodeFunctionData('createRemittance',[receiverAddress,ethers.parseUnits(String(stableAmount), t.decimals), lockPeriod]);
 
-      const txHash=await relayTx(config.remittanceEscrowAddress,data);
+      const txHash=await relayTx(config.escrows[token] || config.remittanceEscrowAddress,data);
 
       const tx =await Transaction.create({ userId: user._id,type: 'send', amount,currency: 'inr',status: 'completed',recipient: receiverAddress,fee,lockedRate});
-      res.json({txHash, receiverAddress,amount: usdcAmount,token: 'usdc', lockPeriod});
+      res.json({txHash, receiverAddress,amount: stableAmount,token, lockPeriod});
 
-      logTravelRule(user, receiverAddress, amount,txHash, 'usdc',tx._id).catch(() =>{});
-      import('./suspicious.js').then(m => m.default(user, amount)).catch(()=> {});
+      if(await needsTravelRule(amount)){
+        submitTravelRule({user,receiverAddress,amount,txHash,token,txId:tx._id}).catch(()=>{});
+      }
+      checkSuspicious(user,amount).catch(()=>{});
 
     }catch(err){
-      user.balance += amount + fee;
-      await user.save();
+      await User.updateOne({ _id: user._id }, { $inc: { balance: amount + fee } });
       throw err;
     }
   }catch(err) {
-    console.error('remit error:',err.message);
+    logger.error({err:err.message}, 'remit error');
 
     res.status(500).json({error: err.message });
   }
 });
 
-router.post('/claim',auth, async(req,res)=>{
+router.post('/claim',auth,claimLimiter,validate(schemas.claim),async(req,res)=>{
   try{
     const{ escrowId}=req.body;
     if(!escrowId)return res.status(400).json({error: 'missing escrowId'});
@@ -592,11 +596,11 @@ router.post('/claim',auth, async(req,res)=>{
 
     const data=iface.encodeFunctionData('release',[escrowId]);
 
-    const txHash= await relayTx(config.remittanceEscrowAddress,data);
+    const txHash= await relayTx(escrow.escrowAddress || config.escrows[escrow.token] || config.remittanceEscrowAddress,data);
 
     res.json({txHash,escrowId,status: 'released' });
   } catch (err){
-    console.error('claim error:',err.message);
+    logger.error({err:err.message}, 'claim error');
     res.status(500).json({error: err.message});
   }
 });
@@ -604,7 +608,7 @@ router.post('/claim',auth, async(req,res)=>{
 //ZK verify route removed — age check uses KYC-verified DOB from Aadhaar
 
 //recover from backup share (mpc: relayer + user shares)
-router.post('/recover-wallet',auth, async (req,res) =>{
+router.post('/recover-wallet',auth,validate(schemas.recoverWallet),async (req,res) =>{
   try{
     const { backupShare } = req.body;
     if(!backupShare)return res.status(400).json({error: 'backupShare required'});
@@ -616,7 +620,7 @@ router.post('/recover-wallet',auth, async (req,res) =>{
     res.json({walletAddress: w.address });
   } catch(err) {
 
-    console.error('recover-wallet error:', err.message);
+    logger.error({err:err.message}, 'recover-wallet error');
     res.status(500).json({error: err.message});
   }
 });
@@ -643,13 +647,13 @@ router.get('/did',auth,async(req, res)=>{
   res.json({ did: user.did, document: user.didDocument });
 });
 
-router.get('/did/:uid',async (req,res) =>{
+router.get('/did/:uid',validate(schemas.didUid),async (req,res) =>{
   const user = await User.findOne({ firebaseUid: req.params.uid });
   if(!user?.didDocument)return res.status(404).json({error: 'DID not found'});
   res.json(user.didDocument);
 });
 
-router.post('/did/issue-kyc-vc',auth, requireAdmin,async(req, res) =>{
+router.post('/did/issue-kyc-vc',auth, requireAdmin,validate(schemas.issueKycVc),async(req, res) =>{
   const user = await User.findOne({firebaseUid: req.body.uid });
 
   if(!user?.did) return res.status(400).json({error: 'user has no DID'});

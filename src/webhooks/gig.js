@@ -1,6 +1,6 @@
 import{Router}from 'express';
 import{ethers }from 'ethers';
-import { verifyJob} from '../gig/platforms.js';
+import logger from '../logger.js';
 
 const router = Router();
 const GIG_KEY=process.env.GIG_WEBHOOK_SECRET || '';
@@ -9,25 +9,16 @@ router.post('/gig-completed',async(req,res)=>{
   if(GIG_KEY && req.headers['x-gig-key']!== GIG_KEY){
     return res.status(401).json({error: 'bad key'});
   }
-
   try{
-    const{jobId,workerWallet,clientWallet,amount,platform}=req.body;
-
+    const{jobId,workerWallet,clientWallet,amount}=req.body;
     if (!jobId || !workerWallet || !amount){
       return res.status(400).json({error: 'missing required fields'});
     }
-
-    //verify job via platform api (best-effort, null = cant verify)
-    const verified=platform ? await verifyJob(platform,jobId): null;
-
-
-    // if client has did + verified kyc, theyre known
+    //ponytail: no public gig apis. trust is based on client kyc/did.
     const {User} =await import('../models.js');
     const client= clientWallet ? await User.findOne({walletAddress: clientWallet}).select('did kyc.status'): null;
     const clientTrusted=client?.did && client?.kyc?.status === 'verified';
-
-    // verified jobs from trusted clients = near-instant release
-    const lockPeriod=verified === true && clientTrusted ? 60 : 259200;
+    const lockPeriod=clientTrusted ? 60 : 259200;
 
     const{ relayTx}=await import('../relayer.js');
     const cfg = (await import('../config.js')).default;
@@ -37,10 +28,9 @@ router.post('/gig-completed',async(req,res)=>{
     const data=iface.encodeFunctionData('createRemittance',[workerWallet,amount,lockPeriod]);
     const txHash=await relayTx(cfg.remittanceEscrowAddress,data);
 
-    res.json({status: 'escrow_created',txHash,jobId,verified,clientTrusted,lockPeriod });
+    res.json({status: 'escrow_created',txHash,jobId,clientTrusted,lockPeriod });
   }catch(err){
-
-    console.error('gig webhook error:',err.message);
+    logger.error({err:err.message}, 'gig webhook error');
     res.status(500).json({error: err.message});
   }
 });

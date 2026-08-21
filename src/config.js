@@ -54,11 +54,17 @@ export default{
   totpSessionSecret: process.env.TOTP_SESSION_SECRET || '',
   ereborUrl: process.env.EREBOR_URL || 'http://localhost:3002',
   ereborRelayerShare: process.env.EREBOR_RELAYER_SHARE || '',
-  polygonRpcUrl: process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com',
+  // ponytail: amoy testnet by default. override with MATIC_RPC_URL for mainnet.
+  polygonRpcUrl: process.env.POLYGON_RPC_URL || 'https://rpc-amoy.polygon.technology',
   polygonRelayerKey: process.env.POLYGON_RELAYER_PRIVATE_KEY || '',
   remittanceEscrowAddress: process.env.REMITTANCE_ESCROW_ADDRESS || '',
   oracleProxyAddress: process.env.ORACLE_PROXY_ADDRESS || '',
-  eurUsdFeed: process.env.EUR_USD_FEED || '0x73366Fe0AA0Ded304479862808e02506FE556a98',
+  pythEurUsdFeedId: process.env.PYTH_FEED_ID || '',
+  oracleDeviationBps: Number(process.env.ORACLE_DEVIATION_BPS) || 500,
+  //amoy default; mainnet: 0x73366Fe0AA0Ded304479862808e02506FE556a98
+  eurUsdFeed: process.env.EUR_USD_FEED || '0xd8d927e5d52Bb7cdb2C0ae6f55ACcB18e9a2B9D7',
+  //mainnet-only, dead on amoy; nothing reads it yet
+  inrUsdFeed: process.env.INR_USD_FEED || '0xDA0F8Df6F5dB15b346f4B8D1156722027E194E60',
   //zk removed, age via kyc dob
   adminEmails:(process.env.ADMIN_EMAILS || '').split(',').filter(Boolean),
   remitFeePercent: Number(process.env.REMIT_FEE_PERCENT) || 0.5,
@@ -70,7 +76,12 @@ export default{
 
     usdc:{address: process.env.USDC_ADDRESS || '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',decimals: 6, label: 'USDC'},
     usdt:{address: process.env.USDT_ADDRESS || '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',decimals: 6,label: 'USDT'},
-    eurc:{address: process.env.EURC_ADDRESS || '0x7f50786A2b2d42E0D2D5a2d5bCcfc8ACb5f5c5C5',decimals: 6,label: 'EURC'},
+    eurc:{address: process.env.EURC_ADDRESS || '0x1aBAEA1f7C830bD89Acc67eC4af516284b1bC33c',decimals: 6,label: 'EURC'},
+  },
+  escrows:{
+    usdc: process.env.REMITTANCE_ESCROW_ADDRESS || '',
+    usdt: process.env.USDT_ESCROW_ADDRESS || '',
+    eurc: process.env.EURC_ESCROW_ADDRESS || '',
   },
 };
 

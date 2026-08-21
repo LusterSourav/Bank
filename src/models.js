@@ -9,7 +9,11 @@ const userSchema=new mongoose.Schema({
   walletAddress: String,
   ereborWalletId: String,
   walletPending:{ type: Boolean,default: false },
-  //zk removed, age via kyc dob
+  // ponytail: zk flag is set server-side when kyc passes. no circuits needed for v1.
+  zkStatus:{
+    ageVerified:{type: Boolean, default: false },
+    countryVerified:{type: Boolean, default: false },
+  },
   kyc:{
 
     status:{type: String, enum:['none', 'pending', 'verified','rejected'],default: 'none'},
@@ -102,6 +106,8 @@ const escrowSchema= new mongoose.Schema({
   escrowId:{type: String,unique: true,required: true},
   senderAddress: String,
   receiverAddress: String,
+  // which deployed escrow contract minted it, per-token
+  escrowAddress: String,
   amount: Number,
   token:{type: String,default: 'usdc'},
   lockedRate: Number,

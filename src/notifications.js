@@ -2,6 +2,7 @@ import{Resend}from 'resend';
 import twilio from 'twilio';
 import config from './config.js';
 import { Notification } from './models/notification.js';
+import logger from './logger.js';
 
 const resend = config.resendKey ? new Resend(config.resendKey) : null;
 const twilioClient = config.twilio.accountSid
@@ -33,7 +34,7 @@ export async function sendEmailNotification(to, subject, body, userId, txType) {
       if (i < 2) await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
     }
   }
-  console.error('email notification failed after retries:', to);
+  logger.error({to}, 'email notification failed after retries');
 }
 
 export async function sendWhatsAppNotification(to, body, templateVars, userId, txType) {
@@ -64,5 +65,5 @@ export async function sendWhatsAppNotification(to, body, templateVars, userId, t
       if (i < 2) await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
     }
   }
-  console.error('whatsapp notification failed after retries:', to);
+  logger.error({to}, 'whatsapp notification failed after retries');
 }

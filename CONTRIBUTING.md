@@ -7,7 +7,8 @@ Contributions are welcome under specific terms.
 
 You must read and agree to the LICENSE file at the root of this
 repository. By submitting a contribution, you agree to be bound by
-the LICENSE terms.
+the LICENSE terms. The LICENSE is version 3.0 and includes a
+license key system that enforces deployment restrictions.
 
 ## How to Contribute
 
@@ -63,7 +64,9 @@ proprietary information.
 ## License
 
 By contributing, you agree that your contributions will be licensed
-under the project's proprietary license. See LICENSE for details.
+under the project's proprietary license (v3.0). See LICENSE for details.
+All deployments require a valid License Key issued by the Copyright
+Holder. See LICENSE Section 33.
 
 ## Questions
 

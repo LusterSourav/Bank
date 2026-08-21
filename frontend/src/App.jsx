@@ -2053,6 +2053,39 @@ function SettingsScreen({user,onBack,onLogout,token,onKyc,onRefreshUser}){
   );
 }
 
+import{Component}from 'react';
+
+class ErrorBoundary extends Component{
+  constructor(props){
+    super(props);
+    this.state={hasError:false,error:null};
+  }
+  static getDerivedStateFromError(error){
+    return{hasError:true,error};
+  }
+  componentDidCatch(error,info){
+    window.__errorLog=window.__errorLog||[];
+    window.__errorLog.push({error:error.message,stack:info.componentStack,time:Date.now()});
+  }
+  render(){
+    if(this.state.hasError){
+      return(
+        <div style={{padding:32,textAlign:'center',fontFamily:'system-ui'}}>
+          <h2>Something went wrong</h2>
+          <p style={{color:'#666'}}>{this.state.error?.message}</p>
+          <button onClick={()=>{this.setState({hasError:false,error:null});window.location.reload();}}
+            style={{marginTop:16,padding:'8px 24px',cursor:'pointer'}}>
+            Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export{ErrorBoundary};
+
 export default function App(){
 
 

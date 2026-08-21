@@ -3,6 +3,12 @@ import crypto from 'crypto';
 import fs from 'fs';
 import readline from 'readline';
 
+function canonicalJson(obj){
+  if(obj===null||typeof obj!=='object')return JSON.stringify(obj);
+  if(Array.isArray(obj))return'['+obj.map(canonicalJson).join(',')+']';
+  return'{"'+Object.keys(obj).sort().map(k=>k+'":'+canonicalJson(obj[k])).join(',')+'"}';
+}
+
 function loadPrivateKey(){
   if(process.env.LICENSE_PRIVATE_KEY){
     return Buffer.from(process.env.LICENSE_PRIVATE_KEY,'base64url');
@@ -24,9 +30,16 @@ function genKeyPair(){
   };
 }
 
+function importPrivateKey(raw){
+  return crypto.createPrivateKey({key:Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),raw]),format:'der',type:'pkcs8'});
+}
+
 function sign(privKey,payload,meta={}){
-  const sig=crypto.sign(null,Buffer.from(payload),privKey);
-  return Buffer.from(JSON.stringify({payload,ts:Date.now(),meta,sig:sig.toString('base64url')})).toString('base64url');
+  const ts=new Date().toISOString();
+  const canonical=canonicalJson({payload,ts,meta});
+  const hash=crypto.createHash('sha256').update(canonical).digest();
+  const sig=crypto.sign(null,hash,privKey);
+  return Buffer.from(JSON.stringify({payload,ts,meta,sig:sig.toString('base64url')})).toString('base64url');
 }
 
 function prompt(q){
@@ -54,6 +67,7 @@ async function main(){
   const licensee=await prompt('Licensee name/entity: ');
   const expiresStr=await prompt('Expiration date (YYYY-MM-DD) or blank for no expiry: ');
   const features=await prompt('Permitted features (comma-separated) or blank for all: ');
+  const project=await prompt('Project ID (default: bank-app): ');
 
   const payload=`bank-license-v3:${licensee}`;
 
@@ -65,8 +79,10 @@ async function main(){
     meta.expires=exp.getTime();
   }
   if(features)meta.features=features.split(',').map(f=>f.trim());
+  meta.project=project||'bank-app';
+  meta.nbf=Date.now();
 
-  const key=sign(priv,payload,meta);
+  const key=sign(importPrivateKey(priv),payload,meta);
 
   console.log('\n=== LICENSE_KEY ===');
   console.log(key);

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-const PUB_KEY=Buffer.from('wXG7QKHx4+QB1BkzFZsDdGiJbvRUPqVJXwHVDkW+OQo=','base64');
+const PUB_KEY=Buffer.from('R+SpIpMxbhWlsviwWRAXhnqjQMv6msCGnBxvNpmCLBs=','base64');
 
 function decodeKey(raw){
   return JSON.parse(Buffer.from(raw,'base64url').toString());

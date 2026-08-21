@@ -1,6 +1,7 @@
 {
   "name": "bank-frontend",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,19 +1,20 @@
 PROPRIETARY AND CONFIDENTIAL LICENSE AGREEMENT
 
-Version 2.0
+Version 3.0
 
 Copyright (c) 2026 LusterSourav. All rights reserved.
 
-IMPORTANT: This is a legally binding agreement. By cloning, forking,
-downloading, copying, or otherwise obtaining any copy of the Software,
-you ("Licensee") agree to be bound by every term herein. If you do not
-agree, you have no right to access the Software and must immediately
-delete all copies and purge all caches.
+This License governs all access to and use of the Software. By
+cloning, forking, downloading, copying, or otherwise obtaining any
+copy of the Software, you ("Licensee") agree to be bound by every
+term herein. This is a legally binding agreement. If you do not agree,
+you have no right to access the Software and must immediately delete
+all copies and purge all caches.
 
-This License is in addition to, and does not replace, any terms imposed
-by the platform hosting the Software (e.g., GitHub Terms of Service).
-Where this License conflicts with any platform terms, this License
-controls between you and the Copyright Holder.
+This License supplements, and does not replace, any terms imposed by
+the platform hosting the Software (e.g., GitHub Terms of Service).
+Where this License conflicts with platform terms, this License controls
+between the parties.
 
 1. DEFINITIONS
 
@@ -23,7 +24,7 @@ protocol specifications, fraud detection logic, financial models,
 transaction routing rules, encryption approaches, database schemas,
 configuration files, documentation, comments, variable names, function
 names, class names, and any other material contained in or derived from
-this repository, in any form or medium now known or hereafter developed.
+this repository, in any form or medium.
 
 1.2 "Derivative Work" means any work that is based on, derived from,
 or incorporates the Software or any portion thereof, including but not
@@ -48,24 +49,37 @@ Copyright Holder's signature or digital authentication.
 1.5 "Confidential Information" means the Software and all Trade
 Secrets, whether or not marked as confidential.
 
-1.6 "Competing Product" means any product, service, or platform that
-performs money transmission, cross-border remittance, blockchain-based
-escrow, oracle-mediated settlement, stablecoin operations, or similar
-financial services.
+1.6 "Competing Product" means any product, service, application,
+platform, or tool that provides, facilitates, or enables money
+transmission, cross-border remittance, blockchain-based escrow,
+oracle-mediated settlement, stablecoin operations, on-chain payments,
+cross-chain bridging of funds, or similar financial or value-transfer
+services, whether offered commercially or as open-source software.
 
-2. FORMATION AND ACCEPTANCE
+1.7 "License Key" means a digitally signed credential issued by the
+Copyright Holder that authorizes a specific deployment of the Software
+as described in Section 33.
 
-2.1 This License is a legally binding contract. Acceptance occurs
-upon the first of: (a) cloning the repository, (b) forking the
-repository, (c) downloading any file, (d) viewing source code beyond
-the first ten (10) lines, or (e) any affirmative act indicating
-agreement (e.g., star, watch, or contributing).
+1.8 "Deployment" means any instance where the Software or a Derivative
+Work is installed, configured, or executed on any server, device,
+container, virtual machine, or similar runtime environment.
 
-2.2 If you access the Software on behalf of an organization, you
+2. ACCEPTANCE AND FORMATION
+
+2.1 This License forms upon the first of: (a) cloning the repository,
+(b) forking the repository, (c) downloading any file, (d) viewing
+source code beyond the first ten (10) lines, or (e) deploying,
+executing, or running the Software or any portion thereof.
+
+2.2 A "star", "watch", "bookmark", or similar platform-level action
+does not alone constitute acceptance. However, cloning or downloading
+in conjunction with any such action does constitute acceptance.
+
+2.3 If you access the Software on behalf of an organization, you
 represent that you have authority to bind that organization. Both
 you and the organization are jointly and severally liable.
 
-2.3 The Copyright Holder may revoke any implicit license at any time
+2.4 The Copyright Holder may revoke any implicit license at any time
 by posting notice on the repository. Revocation does not affect rights
 accrued before the revocation date.
 
@@ -89,9 +103,10 @@ or otherwise make available the Software or any portion thereof to any
 third party.
 
 4.2 Use, study, analyze, inspect, examine, read, browse, or otherwise
-access the Software for any purpose, including but not limited to
-learning its algorithms, patterns, architecture, logic, or
-functionality.
+access the Software for the purpose of building a Competing Product,
+replicating its functionality, or learning its proprietary algorithms
+to use elsewhere. General reading of the Software for purposes of
+verifying compliance with this License is permitted.
 
 4.3 Create, develop, or contribute to any Derivative Work, including
 code that replicates, reimplements, or achieves substantially similar
@@ -135,7 +150,8 @@ public forum, issue tracker, chat room, social media, or similar
 platform.
 
 4.12 Use the Software to train, fine-tune, or otherwise improve any
-artificial intelligence or machine learning model.
+artificial intelligence or machine learning model, whether the model
+is publicly available or not.
 
 5. ANTI-CIRCUMVENTION
 
@@ -151,22 +167,23 @@ the Software in a larger work without authorization.
 gained from the Software to build, improve, or advise on any Competing
 Product, whether or not that product contains copies of the Software.
 
-5.3 Clean-room implementation is expressly prohibited. Licensee may
-not study the Software and have a separate person or team implement the
-same functionality based on your notes, specifications, or descriptions.
-This prohibition applies regardless of whether the implementing team
-had direct access to the Software.
-
-5.4 Licensee shall not disclose, publish, or share any notes,
+5.3 Licensee shall not disclose, publish, or share any notes,
 summaries, analyses, or specifications derived from the Software with
 any third party.
+
+5.4 Licensee shall not disable, tamper with, remove, or interfere with
+any license validation, integrity check, or copy protection mechanism
+embedded in the Software. Any attempt to bypass the license key system
+(Section 33) or anti-tamper provisions (Section 34) constitutes a
+material breach entitling the Copyright Holder to immediate
+termination and injunctive relief.
 
 6. SMART CONTRACT PROVISIONS
 
 6.1 The Software includes Ethereum smart contracts and related code.
 Licensee shall not deploy, interact with, or use any smart contract
 contained in the Software on any blockchain network without Authorized
-Use.
+Use and a valid License Key.
 
 6.2 Licensee shall not create, deploy, or interact with any smart
 contract that replicates, interfaces with, or achieves similar
@@ -176,7 +193,7 @@ functionality to the Software smart contracts.
 contracts based on the Software smart contracts.
 
 6.4 Any deployment of the Software smart contracts by Licensee without
-Authorization Use constitutes irreparable harm entitling the Copyright
+Authorized Use constitutes irreparable harm entitling the Copyright
 Holder to immediate injunctive relief under Section 9.
 
 7. CONFIDENTIALITY
@@ -253,13 +270,11 @@ Copyright Holder at law or in equity.
 
 11.1 In lieu of proving actual damages for unauthorized use of the
 Software, Licensee agrees to pay liquidated damages as follows:
-(a) for unauthorized access or study: ten thousand US dollars
-(USD 10,000) per instance; (b) for unauthorized use in a Competing
-Product: fifty thousand US dollars (USD 50,000) per instance plus
-twenty percent (20%) of Licensee's gross revenue attributable to the
-Competing Product for the period of unauthorized use; (c) for
-unauthorized disclosure: twenty-five thousand US dollars (USD 25,000)
-per disclosure.
+(a) for unauthorized access or study: five thousand US dollars
+(USD 5,000) per instance; (b) for unauthorized use in a Competing
+Product: twenty-five thousand US dollars (USD 25,000) per instance;
+(c) for unauthorized disclosure: fifteen thousand US dollars
+(USD 15,000) per disclosure.
 
 11.2 Each instance of unauthorized use constitutes a separate
 violation. Continuing violations accrue daily.
@@ -270,9 +285,14 @@ be difficult or impossible to calculate and that these amounts are
 reasonable in light of the anticipated or actual harm.
 
 11.4 If any court determines that the liquidated damages in this
-section constitute a penalty, the parties agree that the court may
-reduce the amount to the maximum enforceable amount, and the remaining
-provisions of this License shall continue in full force.
+section constitute an unenforceable penalty, the parties agree that
+the court may reduce the amount to the maximum enforceable amount,
+and the remaining provisions of this License shall continue in full
+force.
+
+11.5 The Copyright Holder retains the right to pursue actual damages
+in lieu of liquidated damages if actual damages are reasonably
+calculable and exceed the liquidated damage amounts.
 
 12. TRADE SECRET PROTECTION
 
@@ -297,9 +317,10 @@ or was built using knowledge gained from the Software.
 
 13.2 This non-compete applies only to the extent permitted by
 applicable law. In jurisdictions where non-competes are prohibited
-(e.g., California, North Dakota, Oklahoma), this section shall be
-limited to the prohibition on using Trade Secrets and Confidential
-Information as set forth in Sections 7 and 12.
+or unenforceable (including but not limited to California, North
+Dakota, Oklahoma, and Minnesota), this section shall be limited to
+the prohibition on using Trade Secrets and Confidential Information
+as set forth in Sections 7 and 12, which shall remain in full force.
 
 13.3 This non-compete does not apply to: (a) general knowledge and
 skills acquired during employment that do not constitute Trade Secrets,
@@ -321,9 +342,8 @@ INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES
 ARISING FROM OR RELATED TO THIS LICENSE OR THE SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
-15.2 THE COPYRIGHT HOLDER'S TOTAL LIABILITY SHALL NOT EXCEED THE
-GREATER OF: (a) THE LIQUIDATED DAMAGES SPECIFIED IN SECTION 11, OR
-(b) ONE THOUSAND US DOLLARS (USD 1,000).
+15.2 THE COPYRIGHT HOLDER'S TOTAL AGGREGATE LIABILITY UNDER THIS
+LICENSE SHALL NOT EXCEED ONE THOUSAND US DOLLARS (USD 1,000).
 
 15.3 THE LIMITATIONS IN THIS SECTION SHALL NOT APPLY TO: (a)
 INFRINGEMENT OF THE COPYRIGHT HOLDER'S INTELLECTUAL PROPERTY RIGHTS,
@@ -352,7 +372,7 @@ courts and waives any objection to venue.
 
 17.3 Notwithstanding the foregoing, the Copyright Holder may seek
 injunctive or equitable relief in any court of competent jurisdiction
- worldwide to prevent irreparable harm.
+worldwide to prevent irreparable harm.
 
 18. DISPUTE RESOLUTION
 
@@ -408,7 +428,8 @@ Copyright Holder.
 
 22.2 The failure of the Copyright Holder to enforce any provision of
 this License shall not constitute a waiver of that provision or any
-other provision.
+other provision. The Copyright Holder's delay or failure to exercise
+any right shall not operate as a waiver.
 
 23. WAIVER
 
@@ -428,8 +449,9 @@ consent.
 25. NOTICES
 
 25.1 All notices under this License must be in writing and sent to
-the Copyright Holder via GitHub:
-https://github.com/LusterSourav/Bank
+the Copyright Holder via one of the following methods: (a) email to
+the address registered on the Copyright Holder's GitHub profile, or
+(b) physical mail to the address specified in Section 36.
 
 25.2 Notices shall be deemed given upon: (a) personal delivery, (b)
 one (1) business day after deposit with a nationally recognized
@@ -439,7 +461,8 @@ certified mail, return receipt requested.
 26. SURVIVAL
 
 26.1 The following sections shall survive termination of this License:
-1, 3, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 19, and 26.
+1, 3, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 19, 26, 30, 33, 34,
+and 35.
 
 27. HEADINGS
 
@@ -458,6 +481,164 @@ agreement.
 performance resulting from causes beyond its reasonable control,
 except that this provision shall not excuse any breach of Licensee's
 confidentiality or trade secret obligations.
+
+30. EXPORT CONTROLS AND SANCTIONS COMPLIANCE
+
+30.1 The Software includes cryptographic functionality and may be
+subject to export control laws and regulations, including but not
+limited to the United States Export Administration Regulations (EAR),
+the International Traffic in Arms Regulations (ITAR), and applicable
+sanctions programs administered by the Office of Foreign Assets
+Control (OFAC). Licensee shall not export, re-export, or transfer the
+Software or any Derivative Work to any country, entity, or person
+subject to comprehensive U.S. sanctions or in violation of applicable
+export control laws.
+
+30.2 Licensee represents and warrants that: (a) Licensee is not
+located in, organized under the laws of, or a resident of any
+country subject to comprehensive U.S. sanctions, (b) Licensee is
+not listed on any U.S. government restricted party list, including
+the Specially Designated Nationals (SDN) List, the Entity List, or
+the Denied Persons List, and (c) Licensee will not use the Software
+for any purpose prohibited by applicable export control or sanctions
+laws.
+
+30.3 Licensee shall comply with all applicable anti-money laundering
+(AML) and counter-terrorism financing (CTF) laws and regulations in
+any jurisdiction where the Software is used, deployed, or accessed.
+
+30.4 The Software includes smart contracts and blockchain technology
+that may be classified as "encryption" or "information security"
+items under ECCN 5D002 or similar classifications. Licensee shall not
+export or re-export the Software without obtaining all required export
+licenses or qualifying for an applicable license exception.
+
+31. GITHUB ENFORCEMENT AND TAKE-DOWN
+
+31.1 The Copyright Holder shall enforce this License through GitHub's
+intellectual property policies, including DMCA takedown requests,
+repository abuse reports, and other enforcement mechanisms available
+through the GitHub platform.
+
+31.2 Any unauthorized fork, clone, or copy of the Software hosted on
+GitHub or similar platforms shall be subject to immediate takedown
+requests. Licensee acknowledges that hosting an unauthorized copy
+constitutes a breach of this License.
+
+31.3 The Copyright Holder reserves the right to report unauthorized
+use to hosting providers, domain registrars, app stores, and other
+platforms where the Software or Derivative Work is deployed or
+distributed.
+
+31.4 Licensee shall cooperate with the Copyright Holder's enforcement
+efforts and shall promptly remove any unauthorized copies of the
+Software within Licensee's control upon receiving written notice.
+
+32. FORK AND CLONE PROHIBITION
+
+32.1 Any fork, clone, or copy of this repository, whether public or
+private, constitutes a separate instance of the Software subject to
+the full terms of this License. Forking does not create a separate
+license grant.
+
+32.2 GitHub's fork feature does not grant any additional rights under
+this License. A fork is treated identically to a clone for all
+purposes of this License.
+
+32.3 Licensee shall not use any fork, branch, or derivative of this
+repository as a basis for a new project without the Copyright Holder's
+prior written consent.
+
+33. LICENSE KEY SYSTEM
+
+33.1 The Software includes an integrity verification mechanism that
+validates a License Key at startup. The Software shall not execute
+without a valid License Key issued by the Copyright Holder.
+
+33.2 License Keys are digitally signed using the Ed25519 algorithm.
+The public verification key is embedded in the Software's source code.
+The private signing key is held exclusively by the Copyright Holder
+and is never distributed.
+
+33.3 A valid License Key is required for: (a) the Software to start,
+(b) any Deployment to function, and (c) any test or evaluation
+environment to execute the Software's code.
+
+33.4 Licensee shall not: (a) disable, bypass, modify, or tamper with
+the License Key validation, (b) share, redistribute, or publish any
+License Key, (c) use a License Key issued for one Deployment in a
+different Deployment without authorization, or (d) attempt to derive
+the private signing key from the public verification key or from any
+issued License Key.
+
+33.5 License Keys may include metadata such as permitted Deployment
+scope, expiration dates, permitted jurisdictions, and permitted
+features. The Software shall enforce these restrictions.
+
+33.6 If the Software detects a missing, invalid, expired, or tampered
+License Key, the Software shall refuse to start and shall log the
+validation failure for diagnostic purposes. This refusal is an
+intentional protection mechanism, not a software defect.
+
+34. ANTI-TAMPER AND INTEGRITY VERIFICATION
+
+34.1 The Software may include integrity verification mechanisms that
+detect unauthorized modification of source code, configuration files,
+smart contract bytecode, or other critical components.
+
+34.2 Licensee shall not disable, circumvent, or interfere with any
+integrity verification mechanism. Any attempt to do so constitutes a
+material breach of this License.
+
+34.3 If the Software detects tampering with its integrity, the
+Software may: (a) refuse to start, (b) limit functionality, (c) log
+the tampering event, or (d) report the tampering to the Copyright
+Holder through available channels.
+
+34.4 The presence or absence of integrity verification mechanisms
+does not affect the Copyright Holder's rights under this License. The
+Copyright Holder retains all remedies regardless of whether integrity
+verification is implemented or detects tampering.
+
+35. SOFTWARE BILL OF MATERIALS AND TRANSPARENCY
+
+35.1 The Software's dependency manifest (package.json, foundry.toml,
+and equivalent configuration files) constitutes the Software Bill of
+Materials (SBOM) for the Software. The SBOM lists all direct
+dependencies and their versions.
+
+35.2 Licensee shall not add, remove, or modify dependencies in the
+SBOM without the Copyright Holder's prior written consent. Any
+unauthorized modification of the SBOM constitutes a material breach.
+
+35.3 The Copyright Holder may publish security advisories, dependency
+updates, and vulnerability notices for the Software. Licensee is
+responsible for monitoring such notices and applying recommended
+updates within a reasonable timeframe.
+
+35.4 The SBOM is provided on an "as-is" basis. The Copyright Holder
+does not warrant that third-party dependencies are free from
+vulnerabilities, but commits to issuing security advisories promptly
+upon discovery.
+
+36. SERVICE OF PROCESS
+
+36.1 Any legal proceedings arising under this License may be served
+by sending notice to the Copyright Holder's registered agent or, if
+no agent is registered, by sending notice to:
+
+  LusterSourav
+  GitHub: https://github.com/LusterSourav/Bank
+
+36.2 The Copyright Holder may designate an alternative service address
+by posting notice on the repository. Such designation shall be
+effective upon posting.
+
+37. GOVERNING LANGUAGE
+
+37.1 This License is drafted in English. If this License is translated
+into any other language, the English version shall control in the event
+of any conflict or inconsistency.
 
 CONTACT
 

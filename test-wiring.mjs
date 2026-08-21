@@ -222,6 +222,7 @@ for(const [filepath,code]of Object.entries(files)) {
   const configRefs = [...code.matchAll(/config\.(\w+)/g)].map(m => m[1]);
   for (const ref of configRefs) {
     if(ref === 'default')continue;
+    if(ref === 'js')continue; // config.js import path, not a key
 
     //Check if the ref is a nested key (config.sandbox.apiKey -> sandbox)
     if (!configKeys.includes(ref)) {

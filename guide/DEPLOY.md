@@ -43,6 +43,20 @@ container.
 rate limits). For production, use a service like QuickNode ($0 tier covers tens of thousands of
 requests/month) or Alchemy's free tier.
 
+## Testnet Faucets
+
+Amoy needs test tokens (USDC/USDT/EURC) and MATIC for gas:
+
+| Asset | Faucet | Notes |
+|---|---|---|
+| USDC | Circle Testnet Faucet | ~20 USDC per claim, ~2h cooldown |
+| MATIC | Alchemy / QuickNode / GetBlock / Chainlink faucets | ~0.5-1 MATIC per request, fine for MVP |
+| USDT / EURC | none public | deploy mocks with `Deploy.s.sol` (see below) |
+
+If a token has no faucet, `Deploy.s.sol` deploys mock ERC-20s when `USDC_ADDRESS`/`USDT_ADDRESS`/
+`EURC_ADDRESS` envs are unset — mint via `cast send <token> "mint(address,uint256)"` and approve
+the escrow.
+
 ## Environment Variables
 
 ### Vercel (existing, plus new)
@@ -62,7 +76,14 @@ POLYGON_RPC_URL=https://rpc-amoy.polygon.technology
 POLYGON_RELAYER_PRIVATE_KEY=<hex-key>
 MULTI_CURRENCY_WALLET_ADDRESS=0x...
 REMITTANCE_ESCROW_ADDRESS=0x...
+USDT_ESCROW_ADDRESS=0x...
+EURC_ESCROW_ADDRESS=0x...
+USDC_ADDRESS=0x...
+USDT_ADDRESS=0x...
+EURC_ADDRESS=0x...
 ORACLE_PROXY_ADDRESS=0x...
+EUR_USD_FEED=https://... (Amoy: 0xd8d927e5d52Bb7cdb2C0ae6f55ACcB18e9a2B9D7)
+INR_USD_FEED=<mainnet: 0xDA0F8Df6F5dB15b346f4B8D1156722027E194E60>
 ZK_VERIFIER_ADDRESS=0x...
 ```
 
@@ -75,8 +96,12 @@ NETWORK=polygon-amoy
 
 ## Deployment Steps
 
-1. **Contracts to testnet.** Run `forge script script/Deploy.s.sol --rpc-url amoy` — deploys all
-   4 contracts to Polygon Amoy. Writes addresses to `deployed-amoy.json`.
+1. **Contracts to testnet.** `forge script script/Deploy.s.sol --rpc-url amoy --broadcast` —
+   deploys contracts to Polygon Amoy and prints `ORACLE_PROXY_ADDRESS=`, `REMITTANCE_ESCROW_ADDRESS=`,
+   `USDC_ADDRESS=`, `USDT_ADDRESS=`, `EURC_ADDRESS=`, `USDT_ESCROW_ADDRESS=`, `EURC_ESCROW_ADDRESS=`
+   env lines. Copy those values into Vercel env vars. Optional envs: `ORACLE_FEED_ADDRESS`,
+   `INR_USD_ANSWER` (mock feed answer when no real feed), `USDC_ADDRESS`/`USDT_ADDRESS`/`EURC_ADDRESS`
+   (skip mock deploys for fauceted tokens).
 
 2. **Erebor on VPS.** `docker compose up -d` on the VPS. Erebor starts on port 3002. Verify with
    `curl http://localhost:3002/health`.

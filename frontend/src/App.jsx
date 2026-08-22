@@ -51,7 +51,7 @@ import { startRegistration, startAuthentication} from '@simplewebauthn/browser';
 
 
 
-const API =import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || '/api';
 let stripePromise;
 try { stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''); } catch(e) { console.warn('Stripe load failed:', e); }
 

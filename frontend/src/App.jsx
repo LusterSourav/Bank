@@ -52,7 +52,8 @@ import { startRegistration, startAuthentication} from '@simplewebauthn/browser';
 
 
 const API =import.meta.env.VITE_API_URL;
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+let stripePromise;
+try { stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''); } catch(e) { console.warn('Stripe load failed:', e); }
 
 async function apiFetch(path,token, opts={}){
   //auto-attach TOTP and WebAuthn session tokens from localStorage
@@ -143,7 +144,7 @@ function LoginScreen({onGoogleLogin, onEmailLogin,isSignUp,setIsSignUp,error, on
 
 
         <div className="form-group">
-          <input data-testid="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)}placeholder={t('email')} />
+          <input data-testid="login-email" type="email" noValidate value={email} onChange={e => setEmail(e.target.value)}placeholder={t('email')} />
         </div>
         <div className="form-group">
           <input data-testid="login-password" type="password" value={password} onChange={e => setPassword(e.target.value)}placeholder={t('password')}/>
@@ -2134,7 +2135,7 @@ export default function App(){
 
           setScreen('dashboard');
         }catch(err){
-          setAuthError(err.message);
+          setAuthError(err.code ? `${err.code}: ${err.message}` : err.message);
           setScreen('login');
         }
 
@@ -2166,7 +2167,7 @@ export default function App(){
   const handleGoogleLogin=async()=> {
     setAuthError('');
     try {await signInWithPopup(auth,googleProvider);}
-    catch(err){if(err.code !== 'auth/popup-closed-by-user')setAuthError(err.message);}
+    catch(err){if(err.code !== 'auth/popup-closed-by-user')setAuthError(err.code ? `${err.code}: ${err.message}` : err.message);}
   };
 
   const handleEmailLogin=async(email,password)=>{
@@ -2174,7 +2175,7 @@ export default function App(){
     try{
       if (isSignUp) await createUserWithEmailAndPassword(auth, email, password);
       else await signInWithEmailAndPassword(auth,email,password);
-    } catch(err){setAuthError(err.message);}
+    } catch(err){setAuthError(err.code ? `${err.code}: ${err.message}` : err.message);}
   };
 
 

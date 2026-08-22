@@ -84,7 +84,8 @@ async function apiFetch(path,token, opts={}){
       ...opts.headers,
     },
   });
-  const data= await res.json();
+  let data;
+  try { data = await res.json(); } catch { throw new Error(`HTTP ${res.status}: Server returned non-JSON response`); }
   if(!res.ok) {
 
   // 403 from TOTP enforcement → clear session so frontend shows unlock gate
@@ -97,7 +98,7 @@ async function apiFetch(path,token, opts={}){
   // 403 from biometric enforcement → clear session so frontend shows unlock gate
   if (res.status === 403 && data.error === 'Biometric session expired') {
     localStorage.removeItem('webauthnSession');
-    window.dispatchEvent(new Event('webauthnSessionExpired'));
+    window.dispatchEvent(new Event('webauthnExpired'));
   }
     throw new Error(data.error || `HTTP ${res.status}`);
   }
